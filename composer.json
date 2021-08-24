@@ -1,0 +1,21 @@
+{
+    "name": "xjryanse/universal",
+    "description": "common universal",
+    "type": "library",
+    "authors": [
+        {
+            "name": "xjryanse",
+            "email": "xjryanse@sina.com"
+        }
+    ],
+    "require": {
+        "xjryanse/system": "0.0.*",
+        "xjryanse/logic": "0.0.*"        
+    },
+    "license": "MIT",
+    "autoload": {
+            "psr-4": {
+              "xjryanse\\universal\\": "src/"
+            }
+    }	
+}
