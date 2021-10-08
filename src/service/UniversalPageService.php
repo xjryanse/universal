@@ -3,6 +3,7 @@
 namespace xjryanse\universal\service;
 
 use xjryanse\system\interfaces\MainModelInterface;
+use xjryanse\logic\Cachex;
 
 /**
  * 页面表
@@ -20,14 +21,20 @@ class UniversalPageService extends Base implements MainModelInterface {
         return self::find($con);
     }
 
+    public function getCache(){
+        return  Cachex::funcGet('UniversalPageService_getCache'.$this->uuid, function(){
+            return $this->get();
+        });
+    }
     /**
      * 获取页面配置
      * @return type
      */
     public function getPage() {
-        $res = self::mainModel()->where('id', $this->uuid)->field('id,page_key,page_name,api_url')->find();
+        $res = self::mainModel()->where('id', $this->uuid)->field('id,group_id,page_key,page_name,api_url')->find();
         if ($res) {
             $res['pageItems'] = UniversalPageItemService::selectByPageId($this->uuid);
+            $res['pageGroup'] = UniversalGroupService::mainModel()->where('id',$res['group_id'])->field('id,group_name,need_manage,fault_route,fault_describe')->find();
         }
 
         return $res;

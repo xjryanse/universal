@@ -21,7 +21,7 @@ class UniversalPageItemService extends Base implements MainModelInterface
     public static function selectByPageId($pageId){
         $con[] = ['page_id','=',$pageId];
         $con[] = ['status','=',1];
-        $lists = self::lists($con,'sort','id,page_id,item_key,data_url,class,value');
+        $lists = self::lists($con,'sort','id,page_id,item_key,data_url,class,value,title,title_class');
         foreach($lists as &$v){
             $classStr = UniversalItemService::getClassStr($v['item_key']);
             //配置选项
@@ -39,9 +39,9 @@ class UniversalPageItemService extends Base implements MainModelInterface
     /**
      * 钩子-保存后
      */
-    public static function extraAfterSave(&$data, $uuid) {
-
-    }
+//    public static function extraAfterSave(&$data, $uuid) {
+//
+//    }
     /**
      * 钩子-更新前
      */
@@ -51,9 +51,9 @@ class UniversalPageItemService extends Base implements MainModelInterface
     /**
      * 钩子-更新后
      */
-    public static function extraAfterUpdate(&$data, $uuid) {
-
-    }    
+//    public static function extraAfterUpdate(&$data, $uuid) {
+//
+//    }    
     /**
      * 钩子-删除前
      */

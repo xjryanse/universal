@@ -5,24 +5,25 @@ namespace xjryanse\universal\service;
 use xjryanse\system\interfaces\MainModelInterface;
 
 /**
- * 导航栏
- * 
+ * 列表
  */
-class UniversalItemNavBarService extends Base implements MainModelInterface {
+class UniversalItemCellService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
 
     protected static $mainModel;
-    protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemNavBar';
+    protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemCell';
 
     /**
      * 必有方法
+     * 一对一
      */
     public static function optionArr($pageItemId) {
         $con[] = ['page_item_id', '=', $pageItemId];
         $con[] = ['status', '=', 1];
-        $res = self::find($con, 'sort');
+        /*         * 卡片组* */
+        $res = self::lists($con);
         return $res;
     }
 
@@ -92,14 +93,7 @@ class UniversalItemNavBarService extends Base implements MainModelInterface {
     /**
      * [顺1]图标
      */
-    public function fIconPic() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * [顺2]宫格图标
-     */
-    public function fGridIcon() {
+    public function fIcon() {
         return $this->getFFieldValue(__FUNCTION__);
     }
 
@@ -117,6 +111,9 @@ class UniversalItemNavBarService extends Base implements MainModelInterface {
         return $this->getFFieldValue(__FUNCTION__);
     }
 
+    public function fClass() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
     /**
      * 排序
      */

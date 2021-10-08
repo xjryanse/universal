@@ -33,9 +33,9 @@ class UniversalItemGridService extends Base implements MainModelInterface
     /**
      * 钩子-保存后
      */
-    public static function extraAfterSave(&$data, $uuid) {
-
-    }
+//    public static function extraAfterSave(&$data, $uuid) {
+//
+//    }
     /**
      * 钩子-更新前
      */
@@ -45,9 +45,9 @@ class UniversalItemGridService extends Base implements MainModelInterface
     /**
      * 钩子-更新后
      */
-    public static function extraAfterUpdate(&$data, $uuid) {
-
-    }    
+//    public static function extraAfterUpdate(&$data, $uuid) {
+//
+//    }    
     /**
      * 钩子-删除前
      */

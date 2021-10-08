@@ -4,22 +4,24 @@ namespace xjryanse\universal\service;
 use xjryanse\system\interfaces\MainModelInterface;
 
 /**
- * 按钮
+ * 列表
  */
-class UniversalItemBtnService extends Base implements MainModelInterface
+class UniversalItemTableService extends Base implements MainModelInterface
 {
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
 
     protected static $mainModel;
-    protected static $mainModelClass    = '\\xjryanse\\universal\\model\\UniversalItemBtn';
+    protected static $mainModelClass    = '\\xjryanse\\universal\\model\\UniversalItemTable';
     /**
      * 必有方法
+     * 一对多
      */
     public static function optionArr( $pageItemId ){
-        $con[]  = ['page_item_id','=',$pageItemId];
-        $con[]  = ['status','=',1];
-        $res    = self::lists( $con ,'sort');
+        $con[] = ['page_item_id','=',$pageItemId];
+        $con[] = ['status','=',1];
+
+        $res = self::lists( $con );
         return $res;
     }
 

@@ -2,6 +2,7 @@
 namespace xjryanse\universal\service;
 
 use xjryanse\system\interfaces\MainModelInterface;
+use xjryanse\logic\Strings;
 
 /**
  * 列表
@@ -23,7 +24,8 @@ class UniversalItemFormService extends Base implements MainModelInterface
         $res = self::lists( $con );
         foreach($res as &$v){
             //展示条件
-            $v['show_condition'] = json_decode($v['show_condition']);
+            $v['show_condition']    = json_decode($v['show_condition']);
+            $v['option']            = Strings::isJson($v['option']) ? json_decode($v['option']) : $v['option'];
         }
         return $res;
     }
@@ -37,9 +39,9 @@ class UniversalItemFormService extends Base implements MainModelInterface
     /**
      * 钩子-保存后
      */
-    public static function extraAfterSave(&$data, $uuid) {
-
-    }
+//    public static function extraAfterSave(&$data, $uuid) {
+//
+//    }
     /**
      * 钩子-更新前
      */
@@ -49,9 +51,9 @@ class UniversalItemFormService extends Base implements MainModelInterface
     /**
      * 钩子-更新后
      */
-    public static function extraAfterUpdate(&$data, $uuid) {
-
-    }    
+//    public static function extraAfterUpdate(&$data, $uuid) {
+//
+//    }    
     /**
      * 钩子-删除前
      */

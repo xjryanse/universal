@@ -3,70 +3,67 @@
 namespace xjryanse\universal\service;
 
 use xjryanse\system\interfaces\MainModelInterface;
-
+use xjryanse\logic\Cachex;
 /**
- * 导航栏
- * 
+ * 页面默认key
  */
-class UniversalItemNavBarService extends Base implements MainModelInterface {
+class UniversalCompanyDefaultPageService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
 
     protected static $mainModel;
-    protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemNavBar';
-
-    /**
-     * 必有方法
-     */
-    public static function optionArr($pageItemId) {
-        $con[] = ['page_item_id', '=', $pageItemId];
-        $con[] = ['status', '=', 1];
-        $res = self::find($con, 'sort');
-        return $res;
+    protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalCompanyDefaultPage';
+    
+    public static function getDefaultKey($companyId,$cate){
+        return Cachex::funcGet(__CLASS__.'_'.__METHOD__.$companyId.$cate, function() use ($companyId, $cate){
+            $con[] = ['company_id','=',$companyId];
+            $con[] = ['cate','=',$cate];
+            return self::mainModel()->where($con)->value('default_page_key');
+        });
     }
-
-    /**
-     * 钩子-保存前
-     */
-    public static function extraPreSave(&$data, $uuid) {
-        
-    }
-
-    /**
-     * 钩子-保存后
-     */
+//
+//    /**
+//     * 钩子-保存前
+//     */
+//    public static function extraPreSave(&$data, $uuid) {
+//        
+//    }
+//
+//    /**
+//     * 钩子-保存后
+//     */
 //    public static function extraAfterSave(&$data, $uuid) {
 //        
 //    }
-
-    /**
-     * 钩子-更新前
-     */
-    public static function extraPreUpdate(&$data, $uuid) {
-        
-    }
-
-    /**
-     * 钩子-更新后
-     */
+//
+//    /**
+//     * 钩子-更新前
+//     */
+//    public static function extraPreUpdate(&$data, $uuid) {
+//        
+//    }
+//
+//    /**
+//     * 钩子-更新后
+//     */
 //    public static function extraAfterUpdate(&$data, $uuid) {
 //        
 //    }
-
-    /**
-     * 钩子-删除前
-     */
-    public function extraPreDelete() {
-        
-    }
-
-    /**
-     * 钩子-删除后
-     */
-    public function extraAfterDelete() {
-        
-    }
+//
+//    /**
+//     * 钩子-删除前
+//     */
+//    public function extraPreDelete() {
+//        
+//    }
+//
+//    /**
+//     * 钩子-删除后
+//     */
+//    public function extraAfterDelete() {
+//        
+//    }
 
     /**
      *
@@ -76,44 +73,23 @@ class UniversalItemNavBarService extends Base implements MainModelInterface {
     }
 
     /**
-     * [冗]页面id
+     * 页面key
      */
-    public function fPageId() {
+    public function fPageKey() {
         return $this->getFFieldValue(__FUNCTION__);
     }
 
     /**
-     * page_item表的id
+     * 页面名称
      */
-    public function fPageItemId() {
+    public function fPageName() {
         return $this->getFFieldValue(__FUNCTION__);
     }
 
     /**
-     * [顺1]图标
+     * api接口路径：有配置拿配置；没配置取默认
      */
-    public function fIconPic() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * [顺2]宫格图标
-     */
-    public function fGridIcon() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * [顺2]图标颜色
-     */
-    public function fIconColor() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 宫格跳转地址
-     */
-    public function fUrl() {
+    public function fApiUrl() {
         return $this->getFFieldValue(__FUNCTION__);
     }
 

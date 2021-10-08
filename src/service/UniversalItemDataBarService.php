@@ -5,16 +5,16 @@ namespace xjryanse\universal\service;
 use xjryanse\system\interfaces\MainModelInterface;
 
 /**
- * 导航栏
+ * 数据条
  * 
  */
-class UniversalItemNavBarService extends Base implements MainModelInterface {
+class UniversalItemDataBarService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
 
     protected static $mainModel;
-    protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemNavBar';
+    protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemDataBar';
 
     /**
      * 必有方法
@@ -22,7 +22,7 @@ class UniversalItemNavBarService extends Base implements MainModelInterface {
     public static function optionArr($pageItemId) {
         $con[] = ['page_item_id', '=', $pageItemId];
         $con[] = ['status', '=', 1];
-        $res = self::find($con, 'sort');
+        $res = self::lists($con, 'sort');
         return $res;
     }
 
