@@ -6,6 +6,8 @@ namespace xjryanse\universal\model;
  */
 class UniversalItemGrid extends Base
 {
+    public static $picFields = ['icon_pic'];
+    
     public function setIconPicAttr($value) {
         return self::setImgVal($value);
     }

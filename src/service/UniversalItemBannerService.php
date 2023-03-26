@@ -2,7 +2,7 @@
 namespace xjryanse\universal\service;
 
 use xjryanse\system\interfaces\MainModelInterface;
-
+use xjryanse\logic\Arrays2d;
 /**
  * 页面轮播
  */
@@ -10,6 +10,8 @@ class UniversalItemBannerService extends Base implements MainModelInterface
 {
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    // 静态模型：配置式数据表
+    use \xjryanse\traits\StaticModelTrait;
 
     protected static $mainModel;
     protected static $mainModelClass    = '\\xjryanse\\universal\\model\\UniversalItemBanner';
@@ -19,8 +21,7 @@ class UniversalItemBannerService extends Base implements MainModelInterface
     public static function optionArr( $pageItemId ){
         $con[] = ['page_item_id','=',$pageItemId];
         $con[] = ['status','=',1];
-
-        return self::lists( $con ,'sort','id,banner_pic,url');
+        return self::staticConList($con,'','sort',['id','banner_pic','url','class','sub_class']);
     }
     
     /**

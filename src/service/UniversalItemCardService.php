@@ -10,7 +10,9 @@ class UniversalItemCardService extends Base implements MainModelInterface
 {
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
-
+    // 静态模型：配置式数据表
+    use \xjryanse\traits\StaticModelTrait;
+    
     protected static $mainModel;
     protected static $mainModelClass    = '\\xjryanse\\universal\\model\\UniversalItemCard';
     /**
@@ -20,8 +22,15 @@ class UniversalItemCardService extends Base implements MainModelInterface
     public static function optionArr( $pageItemId ){
         $con[] = ['page_item_id','=',$pageItemId];
         $con[] = ['status','=',1];
-        /**卡片组**/
-        $res = self::lists( $con );
+        $res = self::staticConList($con, '', 'sort');
+        foreach($res as &$v){
+            //展示条件
+            if($v['param']){
+                $v['param']    = json_decode($v['param'],JSON_UNESCAPED_UNICODE);
+            }
+        }
+//        /**卡片组**/
+//        $res = self::lists( $con );
         return $res;
     }
 

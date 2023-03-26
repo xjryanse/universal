@@ -6,6 +6,8 @@ namespace xjryanse\universal\model;
  */
 class UniversalItemMenu extends Base
 {
+    public static $picFields = ['icon_pic'];
+    
     public function setIconPicAttr($value) {
         return self::setImgVal($value);
     }

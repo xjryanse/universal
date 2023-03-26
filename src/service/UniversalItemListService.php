@@ -2,7 +2,7 @@
 namespace xjryanse\universal\service;
 
 use xjryanse\system\interfaces\MainModelInterface;
-
+use xjryanse\logic\Arrays;
 /**
  * 列表
  */
@@ -10,9 +10,23 @@ class UniversalItemListService extends Base implements MainModelInterface
 {
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    // 静态模型：配置式数据表
+    use \xjryanse\traits\StaticModelTrait;
 
     protected static $mainModel;
     protected static $mainModelClass    = '\\xjryanse\\universal\\model\\UniversalItemList';
+    
+    public static function extraDetails( $ids ){
+        return self::commExtraDetails($ids, function($lists) use ($ids){
+            $structCountArr = UniversalStructureService::groupBatchCount('page_item_id', array_column($lists,'page_item_id'));
+            
+            foreach($lists as &$v){
+                // 通用表单结构数量
+                $v['structCount'] = Arrays::value($structCountArr, $v['page_item_id'],0);
+            }
+            return $lists;
+        });
+    }
     /**
      * 必有方法
      * 一对一
@@ -20,8 +34,13 @@ class UniversalItemListService extends Base implements MainModelInterface
     public static function optionArr( $pageItemId ){
         $con[] = ['page_item_id','=',$pageItemId];
         $con[] = ['status','=',1];
-
-        $res = self::find( $con );
+        $res = self::staticConFind($con);
+        //$res = self::find( $con );
+        // 20230318:增加collaspe
+        if(in_array($res['item_style'],['common','collapse'])){
+            //TODO替换为commStruc：itemDetail中使用
+            $res['option'] = UniversalStructureService::getItemStructure($pageItemId);
+        }
         return $res;
     }
 

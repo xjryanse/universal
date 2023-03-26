@@ -6,6 +6,8 @@ namespace xjryanse\universal\model;
  */
 class UniversalItemUserInfo extends Base
 {
+    public static $picFields = ['background_img'];
+    
     // 分享图标
     public function setBackgroundImgAttr($value) {
         return self::setImgVal($value);

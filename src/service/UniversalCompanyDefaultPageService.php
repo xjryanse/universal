@@ -3,7 +3,6 @@
 namespace xjryanse\universal\service;
 
 use xjryanse\system\interfaces\MainModelInterface;
-use xjryanse\logic\Cachex;
 /**
  * 页面默认key
  */
@@ -11,16 +10,17 @@ class UniversalCompanyDefaultPageService extends Base implements MainModelInterf
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
-
+    // 静态模型：配置式数据表
+    use \xjryanse\traits\StaticModelTrait;
+    
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalCompanyDefaultPage';
     
     public static function getDefaultKey($companyId,$cate){
-        return Cachex::funcGet(__CLASS__.'_'.__METHOD__.$companyId.$cate, function() use ($companyId, $cate){
-            $con[] = ['company_id','=',$companyId];
-            $con[] = ['cate','=',$cate];
-            return self::mainModel()->where($con)->value('default_page_key');
-        });
+        $con[] = ['company_id','=',$companyId];
+        $con[] = ['cate','=',$cate];
+        $res = self::staticConFind($con);
+        return $res ? $res['default_page_key'] : "";
     }
 //
 //    /**

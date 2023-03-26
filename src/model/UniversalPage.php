@@ -6,6 +6,8 @@ namespace xjryanse\universal\model;
  */
 class UniversalPage extends Base
 {
+    public static $picFields = ['share_img'];
+    
     // 分享图标
     public function setShareImgAttr($value) {
         return self::setImgVal($value);

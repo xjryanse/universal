@@ -10,6 +10,8 @@ class UniversalItemUserInfoService extends Base implements MainModelInterface
 {
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    // 静态模型：配置式数据表
+    use \xjryanse\traits\StaticModelTrait;
 
     protected static $mainModel;
     protected static $mainModelClass    = '\\xjryanse\\universal\\model\\UniversalItemUserInfo';
@@ -20,8 +22,8 @@ class UniversalItemUserInfoService extends Base implements MainModelInterface
     public static function optionArr( $pageItemId ){
         $con[] = ['page_item_id','=',$pageItemId];
         $con[] = ['status','=',1];
-
-        $res = self::find( $con );
+        $res = self::staticConFind($con);  
+        //$res = self::find( $con );
         return $res;
     }
 

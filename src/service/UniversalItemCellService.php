@@ -11,7 +11,9 @@ class UniversalItemCellService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
-
+    // 静态模型：配置式数据表
+    use \xjryanse\traits\StaticModelTrait;
+    
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemCell';
 
@@ -22,8 +24,9 @@ class UniversalItemCellService extends Base implements MainModelInterface {
     public static function optionArr($pageItemId) {
         $con[] = ['page_item_id', '=', $pageItemId];
         $con[] = ['status', '=', 1];
+        $res = self::staticConList($con, '', 'sort');
         /*         * 卡片组* */
-        $res = self::lists($con);
+        //$res = self::lists($con);
         return $res;
     }
 

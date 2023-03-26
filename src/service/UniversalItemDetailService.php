@@ -3,35 +3,22 @@
 namespace xjryanse\universal\service;
 
 use xjryanse\system\interfaces\MainModelInterface;
-use xjryanse\user\service\UserAuthRoleUniversalService;
-
+use xjryanse\system\service\SystemColumnListService;
+use xjryanse\logic\Strings;
+use think\facade\Request;
 /**
- * 宫格
+ * 列表
  */
-class UniversalItemGridService extends Base implements MainModelInterface {
+class UniversalItemDetailService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+
 // 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
-// 带权限查询
-    use \xjryanse\universal\traits\UniversalTrait;
 
     protected static $mainModel;
-    protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemGrid';
-    //直接执行后续触发动作
-    protected static $directAfter = true;  
-
-    public static function extraDetails($ids) {
-        return self::commExtraDetails($ids, function($lists) use ($ids) {
-                    $universalTable = self::getTable();
-                    foreach ($lists as &$v) {
-                        $v['roleIds'] = UserAuthRoleUniversalService::universalRoleIds($universalTable, $v['id']);
-                        $v['roleCount']      = count($v['roleIds']);
-                    }
-                    return $lists;
-                });
-    }
+    protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemDetail';
 
     /**
      * 必有方法
@@ -39,25 +26,87 @@ class UniversalItemGridService extends Base implements MainModelInterface {
     public static function optionArr($pageItemId) {
         $con[] = ['page_item_id', '=', $pageItemId];
         $con[] = ['status', '=', 1];
-        
-        $info = UniversalPageItemService::getInstance($pageItemId)->staticGet();
-        if($info['auth_check']){
-            // 20220825:带权限数据校验
-            $res = self::universalListWithAuth($con, false);
-        } else {
-            $res = self::staticConList($con, '', 'sort');            
+        $res = self::staticConList($con, '', 'sort');
+        //$res = self::lists( $con ,'sort','id,label,show_label,field,type,option,show_condition,class,span,layer_url');
+        foreach ($res as &$v) {
+            $v = self::addOpt($v);
         }
-
         return $res;
     }
 
     /**
+     * 子级
+     * @param type $subItemId
+     * @return type
+     */
+    public static function subOptionArr($subItemId) {
+        $con[] = ['subitem_id', '=', $subItemId];
+        $con[] = ['status', '=', 1];
+
+        $res = self::lists($con, 'sort', 'id,label,show_label,field,type,option,show_condition,class,span,layer_url');
+        foreach ($res as &$v) {
+            $v = self::addOpt($v);
+        }
+        return $res;
+    }
+
+    private static function addOpt($v) {
+        //展示条件
+        $v['show_condition'] = json_decode($v['show_condition']);
+        //参数替换
+        $data['comKey'] = session(SESSION_COMPANY_KEY);
+        // 2022-12-06
+        $data['domain'] = Request::domain(true);
+
+        $v['option'] = Strings::dataReplace($v['option'], $data);
+
+        if (in_array($v['type'], ['enum', 'dynenum', 'radio', 'tplset'])) {
+            if ($v['type'] == 'radio') {
+                // radio为枚举
+                $v['option'] = SystemColumnListService::getOption('enum', $v['option']);
+            } else {
+                $v['option'] = SystemColumnListService::getOption($v['type'], $v['option']);
+            }
+        } else {
+            $v['option'] = Strings::isJson($v['option']) ? json_decode($v['option']) : $v['option'];
+        }
+        if (in_array($v['type'], ['array', 'form'])) {
+            //子表单
+            $v['subItems'] = self::subOptionArr($v['id']);
+        }
+        // 20230315：增加通用表单框
+        if($v['type'] == 'common'){
+            // 表单页面结构
+            $v['commStruc'] = UniversalStructureService::getItemStructure($v['id']);
+        }
+        return $v;
+    }
+
+    /**
+     * 传一堆字段数组保存
+     * @param type $pageItemId
+     * @param type $fields
+     */
+    public static function saveField($pageItemId, $fields, $span = 6) {
+        self::checkTransaction();
+        $dataArr = [];
+        foreach ($fields as &$field) {
+            $tmp = [];
+            $tmp['page_item_id'] = $pageItemId;
+            $tmp['label'] = $field;
+            $tmp['field'] = $field;
+            $tmp['type'] = 'text';
+            $tmp['span'] = $span;
+            $dataArr[] = $tmp;
+        }
+        $res = self::saveAll($dataArr);
+        return $res;
+    }
+    /**
      * 钩子-保存前
      */
     public static function extraPreSave(&$data, $uuid) {
-        if (isset($data['roleIds'])) {
-            self::getInstance($uuid)->roleUniversalSave($data['roleIds']);
-        }
+        
     }
 
     /**
@@ -71,9 +120,7 @@ class UniversalItemGridService extends Base implements MainModelInterface {
      * 钩子-更新前
      */
     public static function extraPreUpdate(&$data, $uuid) {
-        if (isset($data['roleIds'])) {
-            self::getInstance($uuid)->roleUniversalSave($data['roleIds']);
-        }
+        
     }
 
     /**
@@ -94,7 +141,7 @@ class UniversalItemGridService extends Base implements MainModelInterface {
      * 钩子-删除后
      */
     public function extraAfterDelete() {
-        $this->universalRoleClear();
+        
     }
 
     /**

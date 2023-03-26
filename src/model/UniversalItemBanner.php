@@ -6,6 +6,8 @@ namespace xjryanse\universal\model;
  */
 class UniversalItemBanner extends Base
 {
+    public static $picFields = ['banner_pic'];
+    
     public function setBannerPicAttr($value) {
         return self::setImgVal($value);
     }

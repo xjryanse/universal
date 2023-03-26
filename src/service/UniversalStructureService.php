@@ -3,55 +3,42 @@
 namespace xjryanse\universal\service;
 
 use xjryanse\system\interfaces\MainModelInterface;
-use xjryanse\logic\Arrays;
+
 /**
- * 页面分组表
+ * 页面表
  */
-class UniversalGroupService extends Base implements MainModelInterface {
+class UniversalStructureService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
     // 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
-    
-    protected static $mainModel;
-    protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalGroup';
-    /*
-    public static function extraDetails( $ids ){
-        //数组返回多个，非数组返回一个
-        $isMulti = is_array($ids);
-        if(!is_array($ids)){
-            $ids = [$ids];
-        }
-        //Debug::debug('入参id数组',$ids);
-        $con[] = ['id','in',$ids];
-        $listRaw = self::mainModel()->where($con)->select();
-        $lists = $listRaw ? $listRaw->toArray() : [];
-        $pageCountArr = UniversalPageService::groupBatchCount('group_id',$ids);
+    use \xjryanse\traits\TreeTrait;
+    use \xjryanse\universal\traits\UniversalTrait;
 
-        foreach($lists as &$v){
-            $v['pageCount'] = Arrays::value($pageCountArr, $v['id'],0);
-        }
-        return $isMulti ? $lists : $lists[0];
-    }
-     */
+    protected static $mainModel;
+    protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalStructure';
+    //直接执行后续触发动作
+    protected static $directAfter = true;  
     
-    public static function extraDetails($ids) {
-        return self::commExtraDetails($ids, function($lists) use ($ids){            
-            $pageCountArr = UniversalPageService::groupBatchCount('group_id',$ids);
-            foreach($lists as &$v){
-                $v['pageCount'] = Arrays::value($pageCountArr, $v['id'],0);
-            }
-            return $lists;
-        });
-    }
     /**
-     * 过滤了一些字段
+     * 20220822:酷酷酷酷酷酷
+     * @param type $pageItemId
+     * @return type
      */
-    public function getGroup(){
-        $info = $this->staticGet();
-        $keys = ['id','group_name','need_manage','need_login','fault_route','fault_describe'];
-        return Arrays::getByKeys($info, $keys);
+    public static function getItemStructure($pageItemId){
+        $con[] = ['page_item_id','=',$pageItemId];
+        $con[] = ['status','=',1];
+        $lists = self::staticConList($con,'','sort');
+        foreach($lists as &$v){
+            $v['option'] = self::universalOptionCov($v['field_type'], $v['option']);
+            $v['element_class']     = json_decode($v['element_class'],JSON_UNESCAPED_UNICODE) ?: $v['element_class'];
+            $v['show_condition']    = json_decode($v['show_condition'],JSON_UNESCAPED_UNICODE);
+        }
+        //拼接树状
+        $res = self::makeTree($lists, '');
+
+        return $res;
     }
     /**
      * 钩子-保存前
@@ -85,14 +72,14 @@ class UniversalGroupService extends Base implements MainModelInterface {
      * 钩子-删除前
      */
     public function extraPreDelete() {
-        
+
     }
 
     /**
      * 钩子-删除后
      */
     public function extraAfterDelete() {
-        
+        $this->universalRoleClear();        
     }
 
     /**
@@ -102,6 +89,9 @@ class UniversalGroupService extends Base implements MainModelInterface {
         return $this->getFFieldValue(__FUNCTION__);
     }
 
+    public function fGroupId() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
     /**
      * 页面key
      */
