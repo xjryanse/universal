@@ -11,6 +11,7 @@ class UniversalItemFlexService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelQueryTrait;
     use \xjryanse\traits\TreeTrait;
 
 // 静态模型：配置式数据表
@@ -18,6 +19,18 @@ class UniversalItemFlexService extends Base implements MainModelInterface {
 
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemFlex';
+
+    public static function extraDetails($ids) {
+        return self::commExtraDetails($ids, function($lists) use ($ids) {
+                    foreach ($lists as &$v) {
+                        // 方便后台管理
+                        $v['innerPageId'] = UniversalPageService::keyToId($v['inner_page_key']);
+                        //2030607:页面存在
+                        $v['isPageExist'] = UniversalPageService::getByPageKey($v['inner_page_key']) ? 1 : 0;
+                    }
+                    return $lists;
+                });
+    }
 
     /**
      * 必有方法
@@ -32,6 +45,8 @@ class UniversalItemFlexService extends Base implements MainModelInterface {
             if ($v['param']) {
                 $v['param'] = json_decode($v['param'], JSON_UNESCAPED_UNICODE);
             }
+            // 20230720
+            $v['show_condition'] = json_decode($v['show_condition']);
         }
 //        /**卡片组**/
 //        $res = self::lists( $con );

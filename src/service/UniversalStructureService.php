@@ -11,7 +11,9 @@ class UniversalStructureService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
-    // 静态模型：配置式数据表
+    use \xjryanse\traits\MainModelQueryTrait;
+
+// 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
     use \xjryanse\traits\TreeTrait;
     use \xjryanse\universal\traits\UniversalTrait;
@@ -19,27 +21,28 @@ class UniversalStructureService extends Base implements MainModelInterface {
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalStructure';
     //直接执行后续触发动作
-    protected static $directAfter = true;  
-    
+    protected static $directAfter = true;
+
     /**
      * 20220822:酷酷酷酷酷酷
      * @param type $pageItemId
      * @return type
      */
-    public static function getItemStructure($pageItemId){
-        $con[] = ['page_item_id','=',$pageItemId];
-        $con[] = ['status','=',1];
-        $lists = self::staticConList($con,'','sort');
-        foreach($lists as &$v){
+    public static function getItemStructure($pageItemId) {
+        $con[] = ['page_item_id', '=', $pageItemId];
+        $con[] = ['status', '=', 1];
+        $lists = self::staticConList($con, '', 'sort');
+        foreach ($lists as &$v) {
             $v['option'] = self::universalOptionCov($v['field_type'], $v['option']);
-            $v['element_class']     = json_decode($v['element_class'],JSON_UNESCAPED_UNICODE) ?: $v['element_class'];
-            $v['show_condition']    = json_decode($v['show_condition'],JSON_UNESCAPED_UNICODE);
+            $v['element_class'] = json_decode($v['element_class'], JSON_UNESCAPED_UNICODE) ?: $v['element_class'];
+            $v['show_condition'] = json_decode($v['show_condition'], JSON_UNESCAPED_UNICODE);
         }
         //拼接树状
         $res = self::makeTree($lists, '');
 
         return $res;
     }
+
     /**
      * 钩子-保存前
      */
@@ -72,14 +75,14 @@ class UniversalStructureService extends Base implements MainModelInterface {
      * 钩子-删除前
      */
     public function extraPreDelete() {
-
+        
     }
 
     /**
      * 钩子-删除后
      */
     public function extraAfterDelete() {
-        $this->universalRoleClear();        
+        $this->universalRoleClear();
     }
 
     /**
@@ -92,6 +95,7 @@ class UniversalStructureService extends Base implements MainModelInterface {
     public function fGroupId() {
         return $this->getFFieldValue(__FUNCTION__);
     }
+
     /**
      * 页面key
      */

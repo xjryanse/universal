@@ -11,30 +11,32 @@ class UniversalItemFtableSubitemService extends Base implements MainModelInterfa
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
-    // 静态模型：配置式数据表
+    use \xjryanse\traits\MainModelQueryTrait;
+
+// 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
 
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemFtableSubitem';
 
     public static function selectByFtableId($ftableId) {
-        $cond[] = ['ftable_id','=',$ftableId];
-        $res = UniversalItemFtableSubitemService::lists($cond,'sort'
-                ,'id,item_key,data_url,param,show_condition,value,class,title,title_class');
+        $cond[] = ['ftable_id', '=', $ftableId];
+        $res = UniversalItemFtableSubitemService::lists($cond, 'sort'
+                        , 'id,item_key,data_url,param,show_condition,value,class,title,title_class');
         foreach ($res as &$v) {
             $classStr = UniversalItemService::getClassStr($v['item_key']);
             //配置选项
             $v['optionArr'] = class_exists($classStr) ? $classStr::subOptionArr($v['id']) : [];
             //参数
-            $v['param']     = json_decode($v['param']);
+            $v['param'] = json_decode($v['param']);
             //显示条件
-            $v['show_condition']     = json_decode($v['show_condition']);
-            if($v['item_key'] == 'form'){
+            $v['show_condition'] = json_decode($v['show_condition']);
+            if ($v['item_key'] == 'form') {
                 // 表单验证规则
                 $v['formRules'] = UniversalItemFormRuleService::getRules($v['id']);
-            }            
+            }
         }
-        
+
         return $res;
     }
 

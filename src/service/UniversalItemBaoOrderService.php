@@ -11,6 +11,7 @@ class UniversalItemBaoOrderService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelQueryTrait;
 
 // 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
@@ -26,7 +27,7 @@ class UniversalItemBaoOrderService extends Base implements MainModelInterface {
         $con[] = ['page_item_id', '=', $pageItemId];
         $con[] = ['status', '=', 1];
         $res = self::staticConFind($con);
-        if($res['order_btn_id']){
+        if ($res['order_btn_id']) {
             // 逐步可淘汰
             $res['orderBtnInfo'] = UniversalItemBtnService::getInstance($res['order_btn_id'])->getWithOption();
         }

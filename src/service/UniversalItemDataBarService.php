@@ -12,7 +12,9 @@ class UniversalItemDataBarService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
-    // 静态模型：配置式数据表
+    use \xjryanse\traits\MainModelQueryTrait;
+
+// 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
 
     protected static $mainModel;
@@ -24,9 +26,21 @@ class UniversalItemDataBarService extends Base implements MainModelInterface {
     public static function optionArr($pageItemId) {
         $con[] = ['page_item_id', '=', $pageItemId];
         $con[] = ['status', '=', 1];
-        $res = self::staticConList($con, '', 'sort');        
+        $res = self::staticConList($con, '', 'sort');
         //$res = self::lists($con, 'sort');
         return self::jsonCov($res);
+    }
+
+    public static function downLoadRemoteConf($options, $newPageItemId) {
+        self::checkTransaction();
+        foreach ($options as $item) {
+            $sData = $item;
+            $newItemId = self::mainModel()->newId();
+            $sData['id'] = $newItemId;
+            $sData['page_item_id'] = $newPageItemId;
+            self::save($sData);
+        }
+        return true;
     }
 
     /**
@@ -70,11 +84,10 @@ class UniversalItemDataBarService extends Base implements MainModelInterface {
     public function extraAfterDelete() {
         
     }
-    
-    
-    protected static function jsonCov($res){
+
+    protected static function jsonCov($res) {
         foreach ($res as &$v) {
-            $v['param']             = json_decode($v['param']);
+            $v['param'] = json_decode($v['param']);
         }
         return $res;
     }

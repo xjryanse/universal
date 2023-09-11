@@ -3,12 +3,15 @@
 namespace xjryanse\universal\service;
 
 use xjryanse\system\interfaces\MainModelInterface;
-use xjryanse\system\logic\ConfigLogic;
+use xjryanse\uniform\service\UniformTableService;
+use xjryanse\system\service\SystemAbilityPageKeyService;
+use xjryanse\wechat\service\WechatWeAppQrSceneService;
+use xjryanse\logic\BaseSystem;
 use xjryanse\logic\Arrays;
-use xjryanse\logic\Strings;
+use xjryanse\logic\Arrays2d;
 use xjryanse\logic\Debug;
+use xjryanse\logic\Strings;
 use xjryanse\logic\DbOperate;
-use xjryanse\curl\Query;
 use think\facade\Cache;
 use Exception;
 
@@ -19,33 +22,63 @@ class UniversalPageService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelQueryTrait;
     // 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
+    use \xjryanse\traits\ObjectAttrTrait;
 
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalPage';
 
+    use \xjryanse\universal\service\page\FieldTraits;
+    use \xjryanse\universal\service\page\DefaultPageTraits;
+    use \xjryanse\universal\service\page\TriggerTraits;
+    use \xjryanse\universal\service\page\CalTraits;
+    
     public static function extraDetails( $ids ){
         return self::commExtraDetails($ids, function($lists) use ($ids){
             //子项数
-            $itemCountArr   = UniversalPageItemService::groupBatchCount('page_id', $ids);
+            // $itemCountArr   = UniversalPageItemService::groupBatchCount('page_id', $ids);
             //浏览次数
             $logCountArr    = UniversalPageLogService::groupBatchCount('page_id', $ids);
 
             foreach($lists as &$v){
                 // 子项数
-                $v['itemCount'] = Arrays::value($itemCountArr, $v['id']);
+                // $v['itemCount'] = Arrays::value($itemCountArr, $v['id']);
                 // 浏览记录数
                 $v['logCount']  = Arrays::value($logCountArr, $v['id']);
             }
             return $lists;
-        });
+        },true);
     }
     
     public static function getByPageKey($pageKey) {
-        $con[] = ['page_key', '=', $pageKey];
-        return self::staticConFind($con);  
-        //return self::find($con);
+        // 20230607
+        if(!$pageKey){
+            return [];
+        }
+//        $con[] = ['page_key', '=', $pageKey];
+//        return self::staticConFind($con);  
+
+        // 20230619:优化性能
+        if(!self::$staticListsAll){
+            self::staticListsAll();
+        }
+        return array_filter(self::$staticListsAll, function ($var) use ($pageKey) {
+            return ($var['page_key'] == $pageKey);
+        });
+    }
+    /**
+     * 20230602:用于后台修改，get取数据
+     * @param type $param
+     */
+    public static function findByKeyOrId($param=[]){
+        $keyOrId = Arrays::value($param, 'id');
+        $id = $keyOrId;
+        if(!Strings::isSnowId($keyOrId)){
+            $id = self::keyToId($keyOrId);
+        }
+        return self::getInstance($id)->info();
     }
     /**
      * 页面key或页面id提取id
@@ -69,12 +102,6 @@ class UniversalPageService extends Base implements MainModelInterface {
         return $info ? $info['id'] : '';
     }
     
-    public function getCache(){
-        return $this->get();
-//        return  Cachex::funcGet('UniversalPageService_getCache'.$this->uuid, function(){
-//            return $this->get();
-//        });
-    }
     /**
      * 20220524 复制页面
      */
@@ -98,24 +125,101 @@ class UniversalPageService extends Base implements MainModelInterface {
         }
         
         return $res;
-    }    
+    }
+    /**
+     * 复制页面，但是替换字段
+     * 表单，详情，表格的字段
+     * @createTime 20230909
+     * @param type $newPageKey      
+     * @param type $fieldArr        ['label'=>'','field'=>'']
+     * @param type $replaceArr      替换字段：['T26N010'=>'T26N011']
+     * @return type
+     * @throws Exception
+     */
+    public function copyPageReplaceField($newPageKey, $fieldArr = [], $replaceArr= []){
+        $infoRaw = $this->get();
+        if(!$infoRaw){
+            throw new Exception('页面不存在'.$this->uuid);
+        }
+        if(self::getByPageKey($newPageKey)){
+            throw new Exception('目标页已存在'.$newPageKey);
+        }
+
+        // 【1】复制页面
+        $newPageId          = self::mainModel()->newId();
+        $info               = $infoRaw;
+        $info['id']         = $newPageId;
+        $info['page_key']   = $newPageKey;
+        $res = self::save($info);
+        // 【2】复制页面项
+        $con        = [];
+        $con[]      = ['page_id','=',$this->uuid];
+        $itemsRaw   = UniversalPageItemService::mainModel()->where( $con )->select();
+        $items      = $itemsRaw ? $itemsRaw->toArray() : [];
+        foreach($items as &$v){
+            if(in_array($v['item_key'],['form','table','detail'])){
+                UniversalPageItemService::getInstance($v['id'])->copyItemReplaceField($newPageId, $fieldArr, $replaceArr);
+            } else {
+                UniversalPageItemService::getInstance($v['id'])->copyItem($newPageId, $replaceArr);
+            }
+        }
+        return $res;
+    }
+    
+    /**
+     * 20230331:下载远端的页面配置
+     */
+    public static function downLoadRemotePage($pageKey){
+        self::checkTransaction();
+
+        $con[] = ['page_key','=',$pageKey];
+        $info = self::find($con);
+        if($info){
+            throw new Exception('本地页面'.$pageKey.'已存在');
+        }
+        $conf = self::getPageWithSys($pageKey);
+        //保存page
+        $sData = $conf;
+        // 新的页面id
+        $newPageId      = self::mainModel()->newId();
+        $sData['id']    = $newPageId;
+        $res            = self::save($sData);
+        //保存item
+        //保存form、btn、……
+        UniversalPageItemService::downLoadRemotePageItem($conf['pageItems'], $newPageId);
+
+        return $res;
+    }
+
     /**
      * 获取页面配置
+     * @param type $subKey  20230329:兼容万能表单
      * @return type
      */
-    public function getPage() {
+    public function getPage($subKey = '') {
         $resRaw = $this->staticGet();
-        $keys = ['id','group_id','bind_company_id','page_key','page_name','api_url','param_get'];
+        $keys = ['id','group_id','bind_company_id','page_key','page_name','api_url','param_get','instruction_id','has_recycle','page_class','need_location','cache_page_keys'];
         $res = $resRaw ? Arrays::getByKeys($resRaw, $keys) : [];
 //        $res = self::mainModel()->where('id', $this->uuid)->field('id,group_id,bind_company_id,page_key,page_name,api_url')->find();
         if ($res) {
+            $res['page_key']  = $subKey ? $res['page_key'].'_'. $subKey : $res['page_key'];
             // 数据表名：用于前端快速定位
             $res['tableName'] = self::pageKeyTableName($res['page_key']);
-            $res['pageItems'] = UniversalPageItemService::selectByPageId($this->uuid);
+            $res['pageItems'] = UniversalPageItemService::selectByPageId($this->uuid, $subKey);
             $res['pageGroup'] = UniversalGroupService::getInstance($res['group_id'])->getGroup();
+            
+            // 20230331:用于字符替换
+            $data = UniformTableService::getByTableNo($subKey);
+            Debug::debug('UniformTableService::getByTableNo($subKey)', $data);
+            $data['subKey']     = $subKey;
+            $res['page_name']   = Strings::dataReplace($res['page_name'], $data);
+            $res['api_url']     = Strings::dataReplace($res['api_url'], $data);
+            // 20230801:缓存key
+            $res['cache_page_keys'] = explode(',', $res['cache_page_keys']);
             //20220817:增加访问日志记录
             UniversalPageLogService::log($res['id']);
         }
+
         return $res;
     }
     /**
@@ -123,13 +227,42 @@ class UniversalPageService extends Base implements MainModelInterface {
      * 无配置时，从远端提取
      */
     public static function getPageWithSys($pageKey, $cate = ''){
-        $id     = self::convertId($pageKey, $cate);
-        $page   = self::getInstance($id)->getPage();
+        // 万能表单，以_分隔
+        $keysArr    = explode('_',$pageKey);
+        $id         = self::convertId(Arrays::value($keysArr, 0), $cate);
+        // 20230329:增加提取动态表单参数
+        $page       = self::getInstance($id)->getPage(Arrays::value($keysArr, 1));
         if(!$page){
-            $page = self::sysPage($pageKey);
+            $page   = self::sysPage($pageKey);
+            // 20230331：是远端的配置
+            $page['isRemote'] = 1;
+        } else {
+            // 20230331：不是远端的配置
+            $page['isRemote'] = 0;
+        }
+        // 20230420:提取后，从本系统拼接一些配置数据
+        $page = self::addThisSysData($page);
+        
+        return $page;
+    }
+    /**
+     * 添加本系统数据
+     * @param type $page
+     */
+    protected static function addThisSysData(&$page){
+        if(isset($page['pageItems'])){
+            foreach($page['pageItems'] as &$v){
+                if($v['item_key'] == 'form'){
+                    foreach($v['optionArr'] as &$vv){
+                        $vv = UniversalItemFormService::addThisSysData($vv);
+                        //dump($vv);
+                    }
+                }
+            }
         }
         return $page;
     }
+    
     /*
      * 转换id
      */
@@ -138,7 +271,7 @@ class UniversalPageService extends Base implements MainModelInterface {
         if(!$id){
             $id = UniversalCompanyDefaultPageService::getDefaultKey(session(SESSION_COMPANY_ID), $cate);
             if(!$id){
-                throw new Exception(session(SESSION_COMPANY_ID).'页面id必须', $id);
+                throw new Exception(session(SESSION_COMPANY_ID).'页面id必须:'. $id);
             }
         }
         //【2】非id转id
@@ -157,7 +290,7 @@ class UniversalPageService extends Base implements MainModelInterface {
      */
     protected static function sysPage( $pageKey){
         $param['id']    = $pageKey;
-        return self::baseSysGet('/webapi/Universal/pageGet',$param);
+        return BaseSystem::baseSysGet('/webapi/Universal/pageGet',$param);
     }
     /**
      * 2022-12-29:页面key，反定位表名：
@@ -180,51 +313,13 @@ class UniversalPageService extends Base implements MainModelInterface {
         array_shift ($tableArr);
         return Strings::camelize(implode('_',array_merge(['p'],$tableArr)));
     }
-    /**
-     * 默认的列表页面
-     * @param type $tableName
-     * @return type
-     */
-    public static function defaultListKey($tableName){
-        $baseName   = self::tableNameGetBaseName($tableName);
-        return $baseName."List";
+
+    public static function tableNameGetWebBaseName( $tableName ){
+        $tableArr   = explode('_',$tableName);
+        array_shift ($tableArr);
+        return Strings::camelize(implode('_',array_merge(['w_sl'],$tableArr)));
     }
-    /**
-     * 20230325:默认详情页
-     * @param type $tableName
-     * @return type
-     */
-    public static function defaultDetailKey($tableName){
-        $baseName   = self::tableNameGetBaseName($tableName);
-        return $baseName."Detail";
-    }
-    /**
-     * 默认的添加页面
-     * @param type $tableName
-     * @return type
-     */
-    public static function defaultAddKey($tableName){
-        $baseName   = self::tableNameGetBaseName($tableName);
-        return $baseName."Add";
-    }
-    /**
-     * 2023-01-15 月统计
-     * @param type $tableName
-     * @return type
-     */
-    public static function defaultMonthlyStaticsKey($tableName){
-        $baseName   = self::tableNameGetBaseName($tableName);
-        return $baseName."MonthlyStatics";
-    }
-    /**
-     * 2023-01-15 年统计
-     * @param type $tableName
-     * @return type
-     */
-    public static function defaultYearlyStaticsKey($tableName){
-        $baseName   = self::tableNameGetBaseName($tableName);
-        return $baseName."YearlyStatics";
-    }
+
     /**
      * 20230325
      * @return type
@@ -232,95 +327,8 @@ class UniversalPageService extends Base implements MainModelInterface {
     protected static function getExpFields(){
         return ['id','company_id','is_lock','has_used','is_delete','creater','updater','create_time','update_time'];
     }
-    /**
-     * 20220427保存列表页面
-     */
-    public static function saveListPage ($tableName) {
-        $baseName   = self::tableNameGetBaseName($tableName);
-        $fieldsArr  = DbOperate::columns($tableName);
-        $expFields  = self::getExpFields();
-        $fields     = array_diff(array_column($fieldsArr,'Field'),$expFields);
-        $pageName   = $baseName."List";
-        $items      = ['form','btn','table'];
-        //带项目保存，获取页面id
-        $pageId     = self::saveWithItemGetPageId($pageName, $items, $tableName);
-        //【三】保存子项目
-        $con[]      = ['page_id','=',$pageId];
-        $pageItems  = UniversalPageItemService::lists($con);
-        foreach($pageItems as $pageItem){
-            if($pageItem['item_key'] == 'form'){
-                UniversalItemFormService::saveField($pageItem['id'],$fields);
-            }
-            if($pageItem['item_key'] == 'btn'){
-                $btnArr = [];
-                $btnArr[] = ['name'=>'查询','cate'=>'paginate'      ,'size'=>'mini','icon'=>'el-icon-search','type'=>'success','data_url'=>'','trigger'=>''];
-                $btnArr[] = ['name'=>'添加','cate'=>'layerUniversal','size'=>'mini','icon'=>'','type'=>'','data_url'=>$baseName.'Add','trigger'=>'list'];
-                UniversalItemBtnService::saveBtn($pageItem['id'],$btnArr);
-            }
-            if($pageItem['item_key'] == 'table'){
-                UniversalItemTableService::saveField($pageItem['id'],$fields);
-            }
-        }
-        return $pageName;
-    }
-    /**
-     * 保存添加/编辑页面
-     */
-    public static function saveAddPage($tableName){
-        $baseName   = self::tableNameGetBaseName($tableName);
-        $fieldsArr  = DbOperate::columns($tableName);
-        // $fields     = array_column($fieldsArr,'Field');
-        $expFields  = self::getExpFields();
-        $fields     = array_diff(array_column($fieldsArr,'Field'),$expFields);
-        // 添加页面
-        $pageName   = $baseName."Add";
-        $items      = ['form','btn'];
-        //带项目保存，获取页面id
-        $pageId     = self::saveWithItemGetPageId($pageName, $items, $tableName);
-        //【三】保存子项目
-        $con[]      = ['page_id','=',$pageId];
-        $pageItems  = UniversalPageItemService::lists($con);
-        foreach($pageItems as $pageItem){
-            if($pageItem['item_key'] == 'form'){
-                //20220605:24
-                UniversalItemFormService::saveField($pageItem['id'],$fields,24);
-            }
-            if($pageItem['item_key'] == 'btn'){
-                $tableArr   = explode('_',$tableName);
-                $urlKey     = count($tableArr) > 2 ? Strings::camelize(implode('_',array_splice($tableArr,2))) : 'index'; 
-                $btnArr     = [];
-                $btnArr[]   = ['name'=>'保存','cate'=>'listOperate'      ,'size'=>'mini','data_url'=>'/admin/'.$tableArr[1].'/saveGetInfo?admKey='.$urlKey ,'trigger'=>'close'];
-                UniversalItemBtnService::saveBtn($pageItem['id'],$btnArr);
-            }
-        }
-        return $pageName;
-    }
 
-    /**
-     * 保存添加/编辑页面
-     */
-    public static function saveDetailPage($tableName){
-        $baseName   = self::tableNameGetBaseName($tableName);
-        $fieldsArr  = DbOperate::columns($tableName);
-        // $fields     = array_column($fieldsArr,'Field');
-        $expFields  = self::getExpFields();
-        $fields     = array_diff(array_column($fieldsArr,'Field'),$expFields);
-        // 添加页面
-        $pageName   = $baseName."Detail";
-        $items      = ['detail'];
-        //带项目保存，获取页面id
-        $pageId     = self::saveWithItemGetPageId($pageName, $items, $tableName);
-        //【三】保存子项目
-        $con[]      = ['page_id','=',$pageId];
-        $pageItems  = UniversalPageItemService::lists($con);
-        foreach($pageItems as $pageItem){
-            if($pageItem['item_key'] == 'detail'){
-                //20220605:24
-                UniversalItemDetailService::saveField($pageItem['id'],$fields,24);
-            }
-        }
-        return $pageName;
-    }
+    
     /**
      * 带项目的key保存
      * @param type $key     页面key
@@ -328,7 +336,7 @@ class UniversalPageService extends Base implements MainModelInterface {
      * @param type $table   表名
      * @return type
      */
-    public static function saveWithItemGetPageId($key,$items, $table){
+    public static function saveWithItemGetPageId($key,$items, $table, $sData = []){
         self::checkTransaction();
         $sData['cate']      = 'pcAdm'; 
         $sData['page_key']  = $key; 
@@ -337,12 +345,23 @@ class UniversalPageService extends Base implements MainModelInterface {
         foreach($items as &$item){
             $tmp = [];
             $tmp['page_id'] = $res['id'];
-            $tmp['item_key'] = $item;
-            if($item == 'table'){
-                $controller = DbOperate::getController($table);
-                $tableKey   = DbOperate::getTableKey($table);
-                $tmp['data_url'] = '/admin/'.$controller.'/list?admKey='.$tableKey;
+            if(is_array($item)){
+                //20230820:传数组
+                $tmp = array_merge($tmp, $item);
+            } else {
+                // 原来的传key
+                $tmp['item_key'] = $item;
+                if($item == 'table'){
+                    $controller = DbOperate::getController($table);
+                    $tableKey   = DbOperate::getTableKey($table);
+                    $tmp['data_url'] = '/admin/'.$controller.'/list?admKey='.$tableKey;
+                }
+                if($item == 'tab'){
+                    $tmp['show_condition']  = '{"status":1}';
+                    $tmp['value']           = 'valTab';
+                }
             }
+            
             $dataArr[] = $tmp;
         }
         UniversalPageItemService::saveAll($dataArr);
@@ -382,6 +401,9 @@ class UniversalPageService extends Base implements MainModelInterface {
             if($pageItem['item_key'] == 'table'){
                 UniversalItemTableService::saveField($pageItem['id'],$fields);
             }
+            if($pageItem['item_key'] == 'detail'){
+                UniversalItemDetailService::saveField($pageItem['id'],$fields);
+            }
         }
         return $res;
     }
@@ -398,150 +420,103 @@ class UniversalPageService extends Base implements MainModelInterface {
     }
     
     /**
-     * 钩子-保存前
+     * 提取当前类型下的字段名称
+     * @describe 用于get数据处理
+     * @createTime 2023-07-18 19:29:00
+     * @creater xjryanse
+     * @param type $type 类型：比如：dynenum,uplimage
      */
-    public static function extraPreSave(&$data, $uuid) {
-        
-    }
+    public function typeFields($subKey = '', $type = 'text'){
+        // 提取全部列表
+        $con[]  = ['page_id','=',$this->uuid];
+        $pageItemList = UniversalPageItemService::staticConList($con);
 
-    /**
-     * 钩子-保存后
-     */
-    public static function extraAfterSave(&$data, $uuid) {
-        
-    }
+        $fields = [];
+        foreach($pageItemList as $v){
+            $tFields = [];
+            if($v['item_key'] == 'form'){
+                $tFields = UniversalItemFormService::typeFields($v['id'], $subKey, $type );
+            }
+            if($v['item_key'] == 'detail'){
+                $tFields = UniversalItemDetailService::typeFields($v['id'], $subKey, $type );
+            }
 
-    /**
-     * 钩子-更新前
-     */
-    public static function extraPreUpdate(&$data, $uuid) {
-        
-    }
-
-    /**
-     * 钩子-更新后
-     */
-    public static function extraAfterUpdate(&$data, $uuid) {
-        
-    }
-
-    /**
-     * 钩子-删除前
-     */
-    public function extraPreDelete() {
-        $con[] = ['page_id','=',$this->uuid];
-        $count = UniversalPageItemService::mainModel()->where($con)->count();
-        if($count){
-            throw new Exception('请先删除'.$count.'个页面项');
+            $fields = array_merge($fields, $tFields);
         }
-    }
-
-    /**
-     * 钩子-删除后
-     */
-    public function extraAfterDelete() {
         
+        //步骤1：
+        return $fields;
     }
 
     /**
-     *
+     * [单条]数据处理，例如（图片，动态枚举等）
+     * @param type $data
      */
-    public function fId() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    public function fGroupId() {
-        return $this->getFFieldValue(__FUNCTION__);
+    public static function dataInfoDealAttr($data, $uPageId, $tableNo) {
+        // 20230717:提取字段明细
+        
+        
+        $picFields = UniversalItemDetailService::getFieldsByPageItemId($uPageId, $tableNo);
+        /* 图片字段提取 */
+        if ($picFields) {
+            $data = Arrays2d::picFieldCov($data, $picFields);
+        }
+        return $data;
     }
     /**
-     * 页面key
+     * 20230726:公司是否有某页面的权限
+     * @param type $companyId
+     * @param type $pageKey
      */
-    public function fPageKey() {
-        return $this->getFFieldValue(__FUNCTION__);
+    public static function compHasAuth($pageKey){
+        $lists = SystemAbilityPageKeyService::allPageList();
+        Debug::debug('compHasAuth的$lists',$lists);
+        $pages = $lists ? array_unique(array_column($lists, 'page_key')) : [];
+        Debug::debug('compHasAuth的$pages',$pages);
+        // 列表之外默认有权
+        if(!in_array($pageKey, $pages)){
+            return true;
+        }
+        $con[] = ['hasAuth','=',1];
+        $hasAuthList = Arrays2d::listFilter($lists, $con);
+        $hasAuthPages = $hasAuthList ? array_unique(array_column($hasAuthList, 'page_key')) : [];
+        return in_array($pageKey, $hasAuthPages);
     }
-
     /**
-     * 页面名称
+     * 20230906:标准字段
      */
-    public function fPageName() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
+    public function standardFields(){
+        $con[] = ['page_id','=',$this->uuid];
+        $con[] = ['item_key','in',['table','form','detail']];
+        $pageItems = UniversalPageItemService::staticConList($con);
+        
+        $arr = [];
+        foreach($pageItems as $v){
+            $tmp = [];
+            $tmp['page_item_id']    = $v['id'];
+            $tmp['itemType']        = $v['item_key'];
+            // 匹配子类
+            $classStr = UniversalItemService::getClassStr($v['item_key']);
+            // 标准化字段
+            $standardFields = class_exists($classStr) && method_exists($classStr, 'standardFields') ? $classStr::standardFields($v['id']) : [];
+            $arr = array_merge($arr,$standardFields);
+        }
 
+        return $arr;
+    }
     /**
-     * api接口路径：有配置拿配置；没配置取默认
+     * 生成小程序场景值二维码
+     * @createTime 2023-09-08
      */
-    public function fApiUrl() {
-        return $this->getFFieldValue(__FUNCTION__);
+    public function generateWeAppQrScene(){
+        $info = $this->get();
+        if(Arrays::value($info, 'cate') != 'weApp'){
+            throw new Exception('不是小程序页面'.$this->uuid);
+        }
+        $data = [];
+        $data['pageId'] = Arrays::value($info, 'page_key');
+        $fromTable = self::getTable();
+        return WechatWeAppQrSceneService::generate($data, $fromTable, $this->uuid);
     }
-
-    /**
-     * 排序
-     */
-    public function fSort() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 状态(0禁用,1启用)
-     */
-    public function fStatus() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 有使用(0否,1是)
-     */
-    public function fHasUsed() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 锁定（0：未锁，1：已锁）
-     */
-    public function fIsLock() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 锁定（0：未删，1：已删）
-     */
-    public function fIsDelete() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 备注
-     */
-    public function fRemark() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 创建者，user表
-     */
-    public function fCreater() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 更新者，user表
-     */
-    public function fUpdater() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 创建时间
-     */
-    public function fCreateTime() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 更新时间
-     */
-    public function fUpdateTime() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
+    
 }

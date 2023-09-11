@@ -3,6 +3,7 @@
 namespace xjryanse\universal\service;
 
 use xjryanse\system\interfaces\MainModelInterface;
+
 /**
  * 页面默认key
  */
@@ -10,18 +11,21 @@ class UniversalCompanyDefaultPageService extends Base implements MainModelInterf
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
-    // 静态模型：配置式数据表
+    use \xjryanse\traits\MainModelQueryTrait;
+
+// 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
-    
+
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalCompanyDefaultPage';
-    
-    public static function getDefaultKey($companyId,$cate){
-        $con[] = ['company_id','=',$companyId];
-        $con[] = ['cate','=',$cate];
+
+    public static function getDefaultKey($companyId, $cate) {
+        $con[] = ['company_id', '=', $companyId];
+        $con[] = ['cate', '=', $cate];
         $res = self::staticConFind($con);
         return $res ? $res['default_page_key'] : "";
     }
+
 //
 //    /**
 //     * 钩子-保存前

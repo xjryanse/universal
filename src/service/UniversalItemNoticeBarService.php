@@ -12,7 +12,9 @@ class UniversalItemNoticeBarService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
-    // 静态模型：配置式数据表
+    use \xjryanse\traits\MainModelQueryTrait;
+
+// 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
 
     protected static $mainModel;
@@ -24,7 +26,7 @@ class UniversalItemNoticeBarService extends Base implements MainModelInterface {
     public static function optionArr($pageItemId) {
         $con[] = ['page_item_id', '=', $pageItemId];
         $con[] = ['status', '=', 1];
-        $res = self::staticConList($con, '', 'sort');   
+        $res = self::staticConList($con, '', 'sort');
         //$res = self::lists($con, 'sort');
         return $res;
     }

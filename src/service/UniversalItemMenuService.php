@@ -4,6 +4,7 @@ namespace xjryanse\universal\service;
 
 use xjryanse\system\interfaces\MainModelInterface;
 use xjryanse\user\service\UserAuthRoleUniversalService;
+
 /**
  * 宫格
  */
@@ -11,6 +12,7 @@ class UniversalItemMenuService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelQueryTrait;
 
 // 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
@@ -19,7 +21,7 @@ class UniversalItemMenuService extends Base implements MainModelInterface {
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemMenu';
     //直接执行后续触发动作
-    protected static $directAfter = true;  
+    protected static $directAfter = true;
 
     /**
      * 必有方法
@@ -29,10 +31,10 @@ class UniversalItemMenuService extends Base implements MainModelInterface {
         $groupId = UniversalPageService::getInstance($pageId)->fGroupId();
 
         $info = UniversalPageItemService::getInstance($pageItemId)->get();
-        
+
         $con[] = ['group_id', '=', $groupId];
         $con[] = ['status', '=', 1];
-        if($info['auth_check']){
+        if ($info['auth_check']) {
             $res = self::universalListWithAuth($con, false);
         } else {
             //0831:会影响前台
@@ -87,24 +89,25 @@ class UniversalItemMenuService extends Base implements MainModelInterface {
      * 钩子-删除后
      */
     public function extraAfterDelete() {
-        $this->universalRoleClear();        
+        $this->universalRoleClear();
     }
+
     /**
      * 20220819
      * @param type $ids
      * @return type
      */
     public static function extraDetails($ids) {
-        return self::commExtraDetails($ids, function($lists) use ($ids){            
-            $universalTable = self::getTable();
-            foreach ($lists as &$v) {
-                $v['roleIds']    = UserAuthRoleUniversalService::universalRoleIds($universalTable, $v['id']);
-                $v['roleCount']      = count($v['roleIds']);
-            }
-            return $lists;
-        });
+        return self::commExtraDetails($ids, function($lists) use ($ids) {
+                    $universalTable = self::getTable();
+                    foreach ($lists as &$v) {
+                        $v['roleIds'] = UserAuthRoleUniversalService::universalRoleIds($universalTable, $v['id']);
+                        $v['roleCount'] = count($v['roleIds']);
+                    }
+                    return $lists;
+                });
     }
-    
+
     /**
      *
      */

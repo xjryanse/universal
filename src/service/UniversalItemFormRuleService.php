@@ -11,23 +11,25 @@ class UniversalItemFormRuleService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
-    // 静态模型：配置式数据表
+    use \xjryanse\traits\MainModelQueryTrait;
+
+// 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
 
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemFormRule';
 
-    public static function getRules($pageItemId){
-        $con[]  = ['page_item_id','=',$pageItemId];
+    public static function getRules($pageItemId) {
+        $con[] = ['page_item_id', '=', $pageItemId];
         //$lists  = self::lists( $con );
-        $lists = self::staticConList($con, '', 'sort');        
-        $data   = [];
-        foreach($lists as $value){
+        $lists = self::staticConList($con, '', 'sort');
+        $data = [];
+        foreach ($lists as $value) {
             $data[$value['key_name']][] = $value;
         }
-        return (object)$data;
+        return (object) $data;
     }
-    
+
     /**
      * 钩子-保存前
      */

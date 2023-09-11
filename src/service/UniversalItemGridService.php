@@ -12,22 +12,26 @@ class UniversalItemGridService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelQueryTrait;
+
 // 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
+
 // 带权限查询
     use \xjryanse\universal\traits\UniversalTrait;
+    use \xjryanse\traits\TreeTrait;
 
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemGrid';
     //直接执行后续触发动作
-    protected static $directAfter = true;  
+    protected static $directAfter = true;
 
     public static function extraDetails($ids) {
         return self::commExtraDetails($ids, function($lists) use ($ids) {
                     $universalTable = self::getTable();
                     foreach ($lists as &$v) {
                         $v['roleIds'] = UserAuthRoleUniversalService::universalRoleIds($universalTable, $v['id']);
-                        $v['roleCount']      = count($v['roleIds']);
+                        $v['roleCount'] = count($v['roleIds']);
                     }
                     return $lists;
                 });
@@ -39,16 +43,16 @@ class UniversalItemGridService extends Base implements MainModelInterface {
     public static function optionArr($pageItemId) {
         $con[] = ['page_item_id', '=', $pageItemId];
         $con[] = ['status', '=', 1];
-        
+
         $info = UniversalPageItemService::getInstance($pageItemId)->staticGet();
-        if($info['auth_check']){
+        if ($info['auth_check']) {
             // 20220825:带权限数据校验
             $res = self::universalListWithAuth($con, false);
         } else {
-            $res = self::staticConList($con, '', 'sort');            
+            $res = self::staticConList($con, '', 'sort');
         }
-
-        return $res;
+        $resp = self::makeTree($res);
+        return $resp;
     }
 
     /**

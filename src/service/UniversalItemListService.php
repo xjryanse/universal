@@ -1,47 +1,66 @@
 <?php
+
 namespace xjryanse\universal\service;
 
 use xjryanse\system\interfaces\MainModelInterface;
 use xjryanse\logic\Arrays;
+
 /**
  * 列表
  */
-class UniversalItemListService extends Base implements MainModelInterface
-{
+class UniversalItemListService extends Base implements MainModelInterface {
+
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
-    // 静态模型：配置式数据表
+    use \xjryanse\traits\MainModelQueryTrait;
+
+// 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
 
     protected static $mainModel;
-    protected static $mainModelClass    = '\\xjryanse\\universal\\model\\UniversalItemList';
-    
-    public static function extraDetails( $ids ){
-        return self::commExtraDetails($ids, function($lists) use ($ids){
-            $structCountArr = UniversalStructureService::groupBatchCount('page_item_id', array_column($lists,'page_item_id'));
-            
-            foreach($lists as &$v){
-                // 通用表单结构数量
-                $v['structCount'] = Arrays::value($structCountArr, $v['page_item_id'],0);
-            }
-            return $lists;
-        });
+    protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemList';
+
+    public static function extraDetails($ids) {
+        return self::commExtraDetails($ids, function($lists) use ($ids) {
+                    $structCountArr = UniversalStructureService::groupBatchCount('page_item_id', array_column($lists, 'page_item_id'));
+
+                    foreach ($lists as &$v) {
+                        // 通用表单结构数量
+                        $v['structCount'] = Arrays::value($structCountArr, $v['page_item_id'], 0);
+                    }
+                    return $lists;
+                });
     }
+
     /**
      * 必有方法
      * 一对一
      */
-    public static function optionArr( $pageItemId ){
-        $con[] = ['page_item_id','=',$pageItemId];
-        $con[] = ['status','=',1];
+    public static function optionArr($pageItemId) {
+        $con[] = ['page_item_id', '=', $pageItemId];
+        $con[] = ['status', '=', 1];
         $res = self::staticConFind($con);
         //$res = self::find( $con );
         // 20230318:增加collaspe
-        if(in_array($res['item_style'],['common','collapse'])){
+        if (in_array($res['item_style'], ['common', 'collapse'])) {
             //TODO替换为commStruc：itemDetail中使用
             $res['option'] = UniversalStructureService::getItemStructure($pageItemId);
         }
+
+        $res['update_param'] = json_decode($res['update_param']);
         return $res;
+    }
+
+    public static function downLoadRemoteConf($options, $newPageItemId) {
+        self::checkTransaction();
+        foreach ($options as $item) {
+//            $sData              = $item;
+//            $newItemId          = self::mainModel()->newId();
+//            $sData['id']        = $newItemId;
+//            $sData['page_item_id']   = $newPageItemId;
+//            self::save($sData);
+        }
+        return true;
     }
 
     /**
@@ -50,157 +69,159 @@ class UniversalItemListService extends Base implements MainModelInterface
     public static function extraPreSave(&$data, $uuid) {
         
     }
+
     /**
      * 钩子-保存后
      */
 //    public static function extraAfterSave(&$data, $uuid) {
 //
 //    }
+
     /**
      * 钩子-更新前
      */
     public static function extraPreUpdate(&$data, $uuid) {
-
+        
     }
+
     /**
      * 钩子-更新后
      */
 //    public static function extraAfterUpdate(&$data, $uuid) {
 //
 //    }
+
     /**
      * 钩子-删除前
      */
-    public function extraPreDelete()
-    {
-
+    public function extraPreDelete() {
+        
     }
+
     /**
      * 钩子-删除后
      */
-    public function extraAfterDelete()
-    {
-
+    public function extraAfterDelete() {
+        
     }
-    
+
     /**
-	 *
-	 */
-	public function fId()
-	{
-		return $this->getFFieldValue(__FUNCTION__);	
-	}
-	/**
-	 *[冗]页面id
-	 */
-	public function fPageId()
-	{
-		return $this->getFFieldValue(__FUNCTION__);	
-	}
-	/**
-	 *page_item表的id
-	 */
-	public function fPageItemId()
-	{
-		return $this->getFFieldValue(__FUNCTION__);	
-	}
-	/**
-	 *[顺1]图标
-	 */
-	public function fIconPic()
-	{
-		return $this->getFFieldValue(__FUNCTION__);	
-	}
-	/**
-	 *[顺2]宫格图标
-	 */
-	public function fGridIcon()
-	{
-		return $this->getFFieldValue(__FUNCTION__);	
-	}
-	/**
-	 *[顺2]图标颜色
-	 */
-	public function fIconColor()
-	{
-		return $this->getFFieldValue(__FUNCTION__);	
-	}
-	/**
-	 *宫格跳转地址
-	 */
-	public function fUrl()
-	{
-		return $this->getFFieldValue(__FUNCTION__);	
-	}
-	/**
-	 *排序
-	 */
-	public function fSort()
-	{
-		return $this->getFFieldValue(__FUNCTION__);	
-	}
-	/**
-	 *状态(0禁用,1启用)
-	 */
-	public function fStatus()
-	{
-		return $this->getFFieldValue(__FUNCTION__);	
-	}
-	/**
-	 *有使用(0否,1是)
-	 */
-	public function fHasUsed()
-	{
-		return $this->getFFieldValue(__FUNCTION__);	
-	}
-	/**
-	 *锁定（0：未锁，1：已锁）
-	 */
-	public function fIsLock()
-	{
-		return $this->getFFieldValue(__FUNCTION__);	
-	}
-	/**
-	 *锁定（0：未删，1：已删）
-	 */
-	public function fIsDelete()
-	{
-		return $this->getFFieldValue(__FUNCTION__);	
-	}
-	/**
-	 *备注
-	 */
-	public function fRemark()
-	{
-		return $this->getFFieldValue(__FUNCTION__);	
-	}
-	/**
-	 *创建者，user表
-	 */
-	public function fCreater()
-	{
-		return $this->getFFieldValue(__FUNCTION__);	
-	}
-	/**
-	 *更新者，user表
-	 */
-	public function fUpdater()
-	{
-		return $this->getFFieldValue(__FUNCTION__);	
-	}
-	/**
-	 *创建时间
-	 */
-	public function fCreateTime()
-	{
-		return $this->getFFieldValue(__FUNCTION__);	
-	}
-	/**
-	 *更新时间
-	 */
-	public function fUpdateTime()
-	{
-		return $this->getFFieldValue(__FUNCTION__);	
-	}
-	
+     *
+     */
+    public function fId() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
+
+    /**
+     * [冗]页面id
+     */
+    public function fPageId() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
+
+    /**
+     * page_item表的id
+     */
+    public function fPageItemId() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
+
+    /**
+     * [顺1]图标
+     */
+    public function fIconPic() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
+
+    /**
+     * [顺2]宫格图标
+     */
+    public function fGridIcon() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
+
+    /**
+     * [顺2]图标颜色
+     */
+    public function fIconColor() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
+
+    /**
+     * 宫格跳转地址
+     */
+    public function fUrl() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
+
+    /**
+     * 排序
+     */
+    public function fSort() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
+
+    /**
+     * 状态(0禁用,1启用)
+     */
+    public function fStatus() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
+
+    /**
+     * 有使用(0否,1是)
+     */
+    public function fHasUsed() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
+
+    /**
+     * 锁定（0：未锁，1：已锁）
+     */
+    public function fIsLock() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
+
+    /**
+     * 锁定（0：未删，1：已删）
+     */
+    public function fIsDelete() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
+
+    /**
+     * 备注
+     */
+    public function fRemark() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
+
+    /**
+     * 创建者，user表
+     */
+    public function fCreater() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
+
+    /**
+     * 更新者，user表
+     */
+    public function fUpdater() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
+
+    /**
+     * 创建时间
+     */
+    public function fCreateTime() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
+
+    /**
+     * 更新时间
+     */
+    public function fUpdateTime() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
+
 }

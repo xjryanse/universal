@@ -4,6 +4,7 @@ namespace xjryanse\universal\service;
 
 use xjryanse\system\interfaces\MainModelInterface;
 use xjryanse\logic\Cachex;
+
 /**
  * 页面项
  */
@@ -11,22 +12,25 @@ class UniversalItemService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
-    // 静态模型：配置式数据表
+    use \xjryanse\traits\MainModelQueryTrait;
+
+// 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
 
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItem';
+
     /**
      * 展示页
      * @return type
      */
-    public static function defaultListPageArr (){
-        $cacheKey = __CLASS__.'_'.__METHOD__;
-        return Cachex::funcGet( $cacheKey, function() {
-            return self::mainModel()->column('default_list_page','item_key');
-        });
+    public static function defaultListPageArr() {
+        $cacheKey = __CLASS__ . '_' . __METHOD__;
+        return Cachex::funcGet($cacheKey, function() {
+                    return self::mainModel()->column('default_list_page', 'item_key');
+                });
     }
-    
+
     /**
      * 处理类库获取class
      * @param type $type

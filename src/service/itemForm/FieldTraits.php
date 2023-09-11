@@ -1,89 +1,11 @@
 <?php
 
-namespace xjryanse\universal\service;
-
-use xjryanse\system\interfaces\MainModelInterface;
-use xjryanse\system\service\SystemColumnListService;
-use xjryanse\logic\Strings;
-use xjryanse\logic\Arrays2d;
-use xjryanse\logic\DbOperate;
+namespace xjryanse\universal\service\itemForm;
 
 /**
- * 表格形式的表单输入框
+ * 触发器
  */
-class UniversalItemFtableService extends Base implements MainModelInterface {
-
-    use \xjryanse\traits\InstTrait;
-    use \xjryanse\traits\MainModelTrait;
-    use \xjryanse\traits\MainModelQueryTrait;
-
-// 静态模型：配置式数据表
-    use \xjryanse\traits\StaticModelTrait;
-
-    protected static $mainModel;
-    protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemFtable';
-
-    /**
-     * 必有方法
-     */
-    public static function optionArr($pageItemId) {
-        $con[] = ['page_item_id', '=', $pageItemId];
-        $con[] = ['status', '=', 1];
-        $resRaw = self::staticConList($con, '', 'sort');
-        //$res = self::lists($con,'sort','id,label,place,class,td_class,width');
-        // 2022-12-17
-        $hideKeys = DbOperate::keysForHide(['page_id', 'page_item_id', 'sort', 'status']);
-        $res = Arrays2d::hideKeys($resRaw, $hideKeys);
-
-        foreach ($res as &$v) {
-            $v['subItems'] = UniversalItemFtableSubitemService::selectByFtableId($v['id']);
-            $v['show_condition'] = json_decode($v['show_condition']);
-        }
-
-        return $res;
-    }
-
-    /**
-     * 钩子-保存前
-     */
-    public static function extraPreSave(&$data, $uuid) {
-        
-    }
-
-    /**
-     * 钩子-保存后
-     */
-//    public static function extraAfterSave(&$data, $uuid) {
-//
-//    }
-
-    /**
-     * 钩子-更新前
-     */
-    public static function extraPreUpdate(&$data, $uuid) {
-        
-    }
-
-    /**
-     * 钩子-更新后
-     */
-//    public static function extraAfterUpdate(&$data, $uuid) {
-//
-//    }    
-
-    /**
-     * 钩子-删除前
-     */
-    public function extraPreDelete() {
-        
-    }
-
-    /**
-     * 钩子-删除后
-     */
-    public function extraAfterDelete() {
-        
-    }
+trait FieldTraits{
 
     /**
      *
@@ -203,5 +125,6 @@ class UniversalItemFtableService extends Base implements MainModelInterface {
     public function fUpdateTime() {
         return $this->getFFieldValue(__FUNCTION__);
     }
+
 
 }

@@ -4,8 +4,12 @@ namespace xjryanse\universal\service;
 
 use xjryanse\system\interfaces\MainModelInterface;
 use xjryanse\system\service\SystemColumnListService;
+use xjryanse\uniform\service\UniformTableService;
+use xjryanse\uniform\service\UniformUniversalItemDetailService;
 use xjryanse\logic\Strings;
+use xjryanse\logic\Arrays;
 use think\facade\Request;
+
 /**
  * 列表
  */
@@ -13,6 +17,7 @@ class UniversalItemDetailService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelQueryTrait;
 
 // 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
@@ -22,16 +27,35 @@ class UniversalItemDetailService extends Base implements MainModelInterface {
 
     /**
      * 必有方法
+     * @param type $pageItemId
+     * @param type $subKey      20230329:兼容万能表单
+     * @return type
      */
-    public static function optionArr($pageItemId) {
+    public static function optionArr($pageItemId, $subKey = '') {
         $con[] = ['page_item_id', '=', $pageItemId];
         $con[] = ['status', '=', 1];
-        $res = self::staticConList($con, '', 'sort');
+        $resRaw = self::staticConList($con, '', 'sort');
         //$res = self::lists( $con ,'sort','id,label,show_label,field,type,option,show_condition,class,span,layer_url');
+        // 处理MONTH_DAY等特殊字串
+        $res = self::listDeal($resRaw, $subKey);
+
         foreach ($res as &$v) {
             $v = self::addOpt($v);
         }
         return $res;
+    }
+
+    public static function listDeal($uList, $subKey = '') {
+        foreach ($uList as $k => &$v) {
+            // 20230329:万能联动表单
+            if ($v['type'] == 'uniform') {
+                $tableId = UniformTableService::tableToId($subKey);
+                $data = UniformUniversalItemDetailService::getOptionArr($tableId, $v['field']);
+                array_splice($uList, $k, 1, $data);
+            }
+        }
+
+        return $uList;
     }
 
     /**
@@ -70,12 +94,12 @@ class UniversalItemDetailService extends Base implements MainModelInterface {
         } else {
             $v['option'] = Strings::isJson($v['option']) ? json_decode($v['option']) : $v['option'];
         }
-        if (in_array($v['type'], ['array', 'form'])) {
+        if (in_array($v['type'], ['array', 'form','subData'])) {
             //子表单
             $v['subItems'] = self::subOptionArr($v['id']);
         }
         // 20230315：增加通用表单框
-        if($v['type'] == 'common'){
+        if (in_array($v['type'], ['common', 'flow'])) {
             // 表单页面结构
             $v['commStruc'] = UniversalStructureService::getItemStructure($v['id']);
         }
@@ -101,6 +125,43 @@ class UniversalItemDetailService extends Base implements MainModelInterface {
         }
         $res = self::saveAll($dataArr);
         return $res;
+    }
+
+    /**
+     * 20230331
+     * @param type $options
+     * @param type $newPageItemId
+     * @return boolean
+     */
+    public static function downLoadRemoteConf($options, $newPageItemId) {
+        self::checkTransaction();
+        foreach ($options as $item) {
+            $sData = $item;
+            $newItemId = self::mainModel()->newId();
+            $sData['id'] = $newItemId;
+            $sData['page_item_id'] = $newPageItemId;
+            self::save($sData);
+        }
+        return true;
+    }
+
+    
+    /**
+     * 20230717:提取上传图片字段
+     * @param type $pageItemId      
+     * @param type $subKey          table_no
+     * @param type $type            uplimage
+     * @return type
+     */
+    public static function typeFields($pageItemId, $subKey, $type ){
+        $options = self::optionArr($pageItemId, $subKey);
+        $arr = [];
+        foreach($options as $v){
+            if($v['type'] == $type){
+                $arr[] = $v['field'];
+            }
+        }
+        return $arr;
     }
     /**
      * 钩子-保存前
@@ -142,6 +203,24 @@ class UniversalItemDetailService extends Base implements MainModelInterface {
      */
     public function extraAfterDelete() {
         
+    }
+    
+    /**
+     * 20230717:提取上传图片字段
+     * @param type $pageItemId      
+     * @param type $subKey          table_no
+     * @param type $type            uplimage
+     * @return type
+     */
+    public static function getFieldsByPageItemId($pageItemId, $subKey, $type ){
+        $options = self::optionArr($pageItemId, $subKey);
+        $arr     = [];
+        foreach($options as $v){
+            if($v['type'] == $type){
+                $arr[] = $v['field'];
+            }
+        }
+        return $arr;
     }
 
     /**
@@ -263,4 +342,38 @@ class UniversalItemDetailService extends Base implements MainModelInterface {
         return $this->getFFieldValue(__FUNCTION__);
     }
 
+    
+    /**
+     * 20230906：转换成标准化字段，用于后台展示对比
+     */
+    public static function standardFields($pageItemId){
+        // $arr[] = ['page_item_id'=>'1111','itemType'=>'detail','label'=>'标签','field'=>'test','type'=>'text'];
+        
+        $con    = [];
+        $con[]  = ['page_item_id','=',$pageItemId];
+        $con[]  = ['status','=',1];
+
+        $lists = self::staticConList($con);
+        $arr = [];
+        foreach($lists as &$v){
+            $tmp    = ['page_item_id'=>$pageItemId,'itemType'=>'detail','label'=>$v['label'],'field'=>$v['field'],'type'=>$v['type']];
+            $arr[]  = $tmp;
+        }
+
+        return $arr;
+    }
+    /*
+     * 标准字段转本表字段
+     */
+    public static function standardFieldToThis($pageItemId, $fieldsArr = []){
+        $arr = [];
+        foreach($fieldsArr as $v){
+            $tmp = $v;
+            $tmp['page_item_id']    = $pageItemId;
+
+            $arr[] = $tmp;
+        }
+        return $arr;
+    }
+    
 }

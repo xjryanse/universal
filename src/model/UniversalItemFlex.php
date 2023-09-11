@@ -6,5 +6,16 @@ namespace xjryanse\universal\model;
  */
 class UniversalItemFlex extends Base
 {
-
+    //20230728 是否将数据缓存到文件
+    public static $cacheToFile = true;
+    
+    public static $picFields = ['icon_pic'];
+    
+    public function setIconPicAttr($value) {
+        return self::setImgVal($value);
+    }
+    //轮播
+    public function getIconPicAttr($value) {
+        return self::getImgVal($value);
+    }
 }

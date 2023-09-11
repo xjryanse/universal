@@ -6,6 +6,9 @@ namespace xjryanse\universal\model;
  */
 class UniversalItemBanner extends Base
 {
+    //20230728 是否将数据缓存到文件
+    public static $cacheToFile = true;
+    
     public static $picFields = ['banner_pic'];
     
     public function setBannerPicAttr($value) {

@@ -11,9 +11,11 @@ class UniversalItemCellService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
-    // 静态模型：配置式数据表
+    use \xjryanse\traits\MainModelQueryTrait;
+
+// 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
-    
+
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemCell';
 
@@ -117,6 +119,7 @@ class UniversalItemCellService extends Base implements MainModelInterface {
     public function fClass() {
         return $this->getFFieldValue(__FUNCTION__);
     }
+
     /**
      * 排序
      */

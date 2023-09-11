@@ -11,6 +11,7 @@ class UniversalItemEchartsService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelQueryTrait;
     use \xjryanse\traits\TreeTrait;
 
 // 静态模型：配置式数据表
@@ -18,6 +19,16 @@ class UniversalItemEchartsService extends Base implements MainModelInterface {
 
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemEcharts';
+
+    public static function extraDetails($ids) {
+        return self::commExtraDetails($ids, function($lists) use ($ids) {
+
+                    foreach ($lists as &$v) {
+                        
+                    }
+                    return $lists;
+                });
+    }
 
     /**
      * 必有方法
@@ -100,12 +111,14 @@ class UniversalItemEchartsService extends Base implements MainModelInterface {
     public function fPageItemId() {
         return $this->getFFieldValue(__FUNCTION__);
     }
+
     /**
      * 20220625
      */
     public function fChartKey() {
         return $this->getFFieldValue(__FUNCTION__);
     }
+
     /**
      * [顺1]图标
      */

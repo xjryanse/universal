@@ -4,6 +4,7 @@ namespace xjryanse\universal\service;
 
 use xjryanse\system\interfaces\MainModelInterface;
 use think\facade\Request;
+
 /**
  * 20220817页面访问日志
  */
@@ -11,6 +12,7 @@ class UniversalPageLogService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelQueryTrait;
     use \xjryanse\traits\RedisModelTrait;
 
     protected static $mainModel;
@@ -23,20 +25,21 @@ class UniversalPageLogService extends Base implements MainModelInterface {
      * @param type $pageId
      * @return type
      */
-    public static function log($pageId){
-        $data['page_id']    = $pageId;
-        $data['ip']         = Request::ip();
+    public static function log($pageId) {
+        $data['page_id'] = $pageId;
+        $data['ip'] = Request::ip();
         return self::redisLog($data);
         // return self::save($data);
     }
+
     /**
      * 清除过期
      */
-    public static function clearExpire($days = 30){
-        $con[] = ['create_time','<=',date('Y-m-d H:i:s',strtotime('-'.$days.' days'))];
+    public static function clearExpire($days = 30) {
+        $con[] = ['create_time', '<=', date('Y-m-d H:i:s', strtotime('-' . $days . ' days'))];
         return self::where($con)->delete();
     }
-        
+
     /**
      * 钩子-保存前
      */
@@ -69,7 +72,7 @@ class UniversalPageLogService extends Base implements MainModelInterface {
      * 钩子-删除前
      */
     public function extraPreDelete() {
-
+        
     }
 
     /**
@@ -89,6 +92,7 @@ class UniversalPageLogService extends Base implements MainModelInterface {
     public function fCompanyId() {
         return $this->getFFieldValue(__FUNCTION__);
     }
+
     /**
      * 页面key
      */
