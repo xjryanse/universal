@@ -15,14 +15,26 @@ class UniversalItemFtableService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelRamTrait;
+    use \xjryanse\traits\MainModelCacheTrait;
+    use \xjryanse\traits\MainModelCheckTrait;
+    use \xjryanse\traits\MainModelGroupTrait;
     use \xjryanse\traits\MainModelQueryTrait;
+
 
 // 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
+    use \xjryanse\traits\ObjectAttrTrait;
 
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemFtable';
 
+    public static function extraDetails($ids) {
+        return self::commExtraDetails($ids, function($lists) use ($ids) {
+                    return $lists;
+                },true);
+    }
+    
     /**
      * 必有方法
      */

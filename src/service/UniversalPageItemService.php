@@ -5,6 +5,8 @@ namespace xjryanse\universal\service;
 use xjryanse\system\interfaces\MainModelInterface;
 use xjryanse\user\service\UserAuthRoleUniversalService;
 use xjryanse\uniform\service\UniformTableService;
+use xjryanse\universal\service\UniversalItemService;
+use xjryanse\logic\BaseSystem;
 use xjryanse\logic\Debug;
 use xjryanse\logic\DbOperate;
 use xjryanse\logic\Arrays;
@@ -18,13 +20,22 @@ class UniversalPageItemService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelRamTrait;
+    use \xjryanse\traits\MainModelCacheTrait;
+    use \xjryanse\traits\MainModelCheckTrait;
+    use \xjryanse\traits\MainModelGroupTrait;
     use \xjryanse\traits\MainModelQueryTrait;
+
 
 // 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
 
 // 带权限查询
     use \xjryanse\universal\traits\UniversalTrait;
+    
+    // 20240504:给AuthSetTrait用
+    protected static $titleKey = 'title';
+    use \xjryanse\universal\traits\PageAuthSetTrait;
 
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalPageItem';
@@ -33,7 +44,11 @@ class UniversalPageItemService extends Base implements MainModelInterface {
     
     use \xjryanse\universal\service\pageItem\TriggerTraits;
     use \xjryanse\universal\service\pageItem\PaginateTraits;
-
+    use \xjryanse\universal\service\pageItem\DimTraits;
+    use \xjryanse\universal\service\pageItem\FieldTraits;
+    use \xjryanse\universal\service\pageItem\CalTraits;
+    use \xjryanse\universal\service\pageItem\FrPageTraits;
+    
     public static function extraDetails($ids) {
         return self::commExtraDetails($ids, function($lists) use ($ids) {
                     $universalTable = self::getTable();
@@ -54,27 +69,18 @@ class UniversalPageItemService extends Base implements MainModelInterface {
      */
     public function copyItem($newPageId, $replaceArr=[]) {
         //【1】保存页面项
-        $resp = $this->copyPageItemSave($newPageId);
+        $resp = $this->copyPageItemSave($newPageId, $replaceArr);
 
         $itemKey    = $this->fItemKey();
-        // 页面项
-        $prefix     = config('database.prefix');
-        $tableName  = $prefix . 'universal_item_' . $itemKey;
-        $tableClass = DbOperate::getService($tableName);
-        if (class_exists($tableClass) && DbOperate::hasField($tableName, 'page_item_id')) {
-            //【2】页面项目
-            $con[] = ['page_item_id', '=', $this->uuid];
-            $items = Db::table($tableName)->where($con)->select();
-            foreach ($items as &$v) {
-                // 20230910:增加替换字符串
-                $v = Arrays::strReplace($v, $replaceArr);
-                $v['id']            = self::mainModel()->newId();
-                $v['page_id']       = $newPageId;
-                $v['page_item_id']  = Arrays::value($resp,'id');
-            }
-            $tableClass::saveAll($items);
-        }
 
+        $pageItemId = Arrays::value($resp,'id');
+        $this->itemKeyCopy($itemKey, $pageItemId, $replaceArr);
+        // 20231119
+        if($itemKey == 'table'){
+            //表格的话，增加按钮
+            $this->itemKeyCopy('btn', $pageItemId);
+        }
+        
         return $resp;
     }
     
@@ -83,11 +89,12 @@ class UniversalPageItemService extends Base implements MainModelInterface {
         $prefix     = config('database.prefix');
         $tableName  = $prefix . 'universal_item_' . $itemKey;
         $tableClass = DbOperate::getService($tableName);
-        if (!class_exists($tableClass) || DbOperate::hasField($tableName, 'page_item_id')) {
-            
+        if (!class_exists($tableClass) || !DbOperate::hasField($tableName, 'page_item_id')) {
+            return false;
         }
         //【2】页面项目
         $con[] = ['page_item_id', '=', $this->uuid];
+        $con[] = ['status', '=', 1];
         $items = Db::table($tableName)->where($con)->select();
         foreach ($items as &$v) {
             // 20230910:增加替换字符串
@@ -111,7 +118,7 @@ class UniversalPageItemService extends Base implements MainModelInterface {
 
         $pageItemId = Arrays::value($resp,'id');
         $itemKey    = $this->fItemKey();
-        $res = $this->itemKeyCopyReplace($itemKey, $pageItemId, $fieldArr, $replaceArr);
+        $res        = $this->itemKeyCopyReplace($itemKey, $pageItemId, $fieldArr, $replaceArr);
         if($itemKey == 'table'){
             //表格的话，增加按钮
             $this->itemKeyCopy('btn', $pageItemId, $replaceArr);
@@ -127,30 +134,43 @@ class UniversalPageItemService extends Base implements MainModelInterface {
         if (!class_exists($tableClass) || !DbOperate::hasField($tableName, 'page_item_id')) {
             return false;
         }
-        // 20230910 标准字段的转换逻辑
-        if(method_exists($tableClass, 'standardFieldToThis')){
-            // 标准字段转各表保存
-            $fieldArr =  $tableClass::standardFieldToThis($pageItemId, $fieldArr);
-        }
-        // 20230911 不替换字段的提取逻辑
-        if(method_exists($tableClass, 'copyKeepFields')){
-            // 标准字段转各表保存
-            $tmpArr =  $tableClass::copyKeepFields($this->uuid, $pageItemId);
-            $fieldArr = array_merge($fieldArr, $tmpArr);
-        }
         
-        //字段处理和保存
-        foreach($fieldArr as &$v){
-            // 20230910:增加替换字符串
-            $v = Arrays::strReplace($v, $replaceArr);
+        // +++++++
+        $classStr   = UniversalItemService::getClassStr($itemKey);
+        // 同步字段
+        if(method_exists($classStr, 'copyPageItemReplaceField')){
+            //TODO提取表的字段
+            $classStr::copyPageItemReplaceField($this->uuid, $pageItemId,$fieldArr, $replaceArr);
+        } else {
+            
+            // 【TODO】 这个要逐步淘汰
+            // 20230910 标准字段的转换逻辑
+            if(method_exists($tableClass, 'standardFieldToThis')){
+                // 标准字段转各表保存
+                $fieldArr =  $tableClass::standardFieldToThis($pageItemId, $fieldArr);
+            }
+            // 20230911 不替换字段的提取逻辑
+            if(method_exists($tableClass, 'copyKeepFields')){
+                // 标准字段转各表保存
+                $tmpArr =  $tableClass::copyKeepFields($this->uuid, $pageItemId);
+                $fieldArr = array_merge($fieldArr, $tmpArr);
+            }
+            //字段处理和保存
+            foreach($fieldArr as &$v){
+                // 20230910:增加替换字符串
+                $v = Arrays::strReplace($v, $replaceArr);
 
-            $v['id']            = self::mainModel()->newId();
-            // $v['page_id']       = $newPageId;
-            $v['page_item_id']  = $pageItemId;
+                $v['id']            = self::mainModel()->newId();
+                // $v['page_id']       = $newPageId;
+                $v['page_item_id']  = $pageItemId;
+            }
+
+            return $tableClass::saveAll($fieldArr);            
         }
-
-        return $tableClass::saveAll($fieldArr);
     }
+
+    
+    
     /**
      * 复制页面的页面项基本数据保存
      */
@@ -181,9 +201,11 @@ class UniversalPageItemService extends Base implements MainModelInterface {
      * @throws Exception
      */
 
-    public static function downLoadRemotePageItem($pageItems, $newPageId) {
+    public static function downLoadRemotePageItem($pageId, $newPageId) {
+        $optionsN    = self::sysItems($pageId);
+        
         self::checkTransaction();
-        foreach ($pageItems as $item) {
+        foreach ($optionsN as $item) {
             $sData = $item;
             $newPageItemId = self::mainModel()->newId();
             $sData['id'] = $newPageItemId;
@@ -191,12 +213,13 @@ class UniversalPageItemService extends Base implements MainModelInterface {
             self::save($sData);
 
             // 远端保存页面项
-            $prefix = config('database.prefix');
-            $tableName = $prefix . 'universal_item_' . $item['item_key'];
+            // $prefix = config('database.prefix');
+            // $tableName = $prefix . 'universal_item_' . $item['item_key'];
+            $tableName = self::calSubTableName($item['item_key']);
             $tableClass = DbOperate::getService($tableName);
             if (class_exists($tableClass)) {
-                $options = $item['optionArr'];
-                $tableClass::downLoadRemoteConf($options, $newPageItemId);
+                // 20231008:临时过渡
+                $tableClass::downLoadRemoteConf($item['id'], $newPageItemId);
             }
         }
         return true;
@@ -250,6 +273,8 @@ class UniversalPageItemService extends Base implements MainModelInterface {
             }
             // 20230826：通用结构(兼容前端静态html用)
             $v['itemStruct'] = UniversalStructureService::getItemStructure($v['id']);
+            // 20231208:方便开发
+            $v['devListPage'] = UniversalItemService::keyListPage($v['item_key']);
         }
         return $lists;
     }
@@ -262,6 +287,7 @@ class UniversalPageItemService extends Base implements MainModelInterface {
             self::getInstance($uuid)->roleUniversalSave($data['roleIds']);
         }
     }
+
 
     /**
      * 钩子-保存后
@@ -301,94 +327,36 @@ class UniversalPageItemService extends Base implements MainModelInterface {
     }
 
     /**
-     *
+     * 远端提取项目列表
+     * @createTime 2023-10-08
+     * @return type
      */
-    public function fId() {
-        return $this->getFFieldValue(__FUNCTION__);
+    protected static function sysItems($pageId) {
+        $param['pageId'] = $pageId;
+        return BaseSystem::baseSysGet('/webapi/Universal/pageItemListForDownload', $param);
     }
 
+    
     /**
-     * 页面id
+     * 20230607
+     * @param type $pageId
+     * @param type $dataArr     二维数组
+     * @return type
      */
-    public function fPageId() {
-        return $this->getFFieldValue(__FUNCTION__);
+    public static function getDynDataListByPageIdAndData($pageId, $dataArr) {
+        $con    = [];
+        $con[]  = ['page_id','=',$pageId];
+        $items  = self::staticConList($con);
+        
+        $res = [];
+        foreach($items as $v){
+            $classStr   = UniversalItemService::getClassStr($v['item_key']);
+            //配置选项
+            $method     = 'getDynDataListByPageItemIdAndData';
+            $tArr       = class_exists($classStr) && method_exists($classStr, $method) 
+                    ? $classStr::getDynDataListByPageItemIdAndData($v['id'], $dataArr) : [];
+            $res = array_merge($res, $tArr);
+        }
+        return $res;
     }
-
-    /**
-     * 项目key
-     */
-    public function fItemKey() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 排序
-     */
-    public function fSort() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 状态(0禁用,1启用)
-     */
-    public function fStatus() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 有使用(0否,1是)
-     */
-    public function fHasUsed() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 锁定（0：未锁，1：已锁）
-     */
-    public function fIsLock() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 锁定（0：未删，1：已删）
-     */
-    public function fIsDelete() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 备注
-     */
-    public function fRemark() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 创建者，user表
-     */
-    public function fCreater() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 更新者，user表
-     */
-    public function fUpdater() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 创建时间
-     */
-    public function fCreateTime() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 更新时间
-     */
-    public function fUpdateTime() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
 }

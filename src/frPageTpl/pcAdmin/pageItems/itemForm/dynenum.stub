@@ -1,0 +1,7 @@
+<el-col :span="{$span}" style="min-height:45px">
+  <el-form-item label="{$label}" :prop="{$field}">
+    <el-select clearable filterable remote :remote-method="remoteMethod" ref="cselect" v-model="mDataData.{$field}" placeholder="请选择{$label}" @change="onInputBlur" @blur="selectBlur()">
+      <el-option v-for="(key,val) in options" :key="val" :label="key" :value="val"></el-option>
+    </el-select>
+  </el-form-item>
+</el-col>

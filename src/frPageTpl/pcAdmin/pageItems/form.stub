@@ -1,0 +1,3 @@
+    <el-form class="{$class}" :inline="true" :model="mDataData" size="small" >
+      {$itemsContent}
+    </el-form>

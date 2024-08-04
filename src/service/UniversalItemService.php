@@ -12,7 +12,12 @@ class UniversalItemService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelRamTrait;
+    use \xjryanse\traits\MainModelCacheTrait;
+    use \xjryanse\traits\MainModelCheckTrait;
+    use \xjryanse\traits\MainModelGroupTrait;
     use \xjryanse\traits\MainModelQueryTrait;
+
 
 // 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
@@ -30,7 +35,16 @@ class UniversalItemService extends Base implements MainModelInterface {
                     return self::mainModel()->column('default_list_page', 'item_key');
                 });
     }
-
+    /*
+     * 20231208:key转列表
+     */
+    public static function keyListPage($key){
+        $con    = [];
+        $con[]  = ['item_key','=',$key];
+        $info   = self::staticConFind($con);
+        return $info ? $info['default_list_page'] : '';
+    }
+    
     /**
      * 处理类库获取class
      * @param type $type

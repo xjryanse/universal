@@ -1,0 +1,28 @@
+    // 本系统方法
+    remoteMethod(query, emptyQuery) {
+      var that = this
+      if ((query !== '' || emptyQuery) && that.data_ajax) {
+        // 20221102空请求且正在请求中，不处理
+        if(!query && this.loading){
+          return false
+        }
+        this.loading = true
+        setTimeout(() => {
+          var qData = {}
+          qData.search = query
+          // 联动字段
+          if (this.uniField) {
+            qData.uniData = {}
+            qData.uniData = this.uniValue
+          }
+
+          ACommPost( 'admin/SSystem/uniDynSearch?columnListId=' + that.data_ajax , qData).then(res => {
+            that.loading = false
+            // console.log(res.data)
+            that.options = res.data
+          })
+        }, 200)
+      } else {
+        // this.options = []
+      }
+    },

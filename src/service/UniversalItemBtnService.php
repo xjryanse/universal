@@ -5,6 +5,8 @@ namespace xjryanse\universal\service;
 use xjryanse\system\interfaces\MainModelInterface;
 use xjryanse\user\service\UserAuthRoleUniversalService;
 use xjryanse\system\service\SystemAbilityPageKeyService;
+use xjryanse\system\logic\ExportLogic;
+use xjryanse\generate\service\GenerateTemplateLogService;
 use xjryanse\logic\Debug;
 use xjryanse\logic\BaseSystem;
 use xjryanse\logic\Arrays;
@@ -12,6 +14,7 @@ use xjryanse\logic\Arrays2d;
 use xjryanse\logic\DbOperate;
 use xjryanse\logic\Strings;
 use think\Db;
+use think\facade\Request;
 use Exception;
 
 /**
@@ -21,7 +24,12 @@ class UniversalItemBtnService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelRamTrait;
+    use \xjryanse\traits\MainModelCacheTrait;
+    use \xjryanse\traits\MainModelCheckTrait;
+    use \xjryanse\traits\MainModelGroupTrait;
     use \xjryanse\traits\MainModelQueryTrait;
+
 
 // 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
@@ -31,7 +39,16 @@ class UniversalItemBtnService extends Base implements MainModelInterface {
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemBtn';
     //直接执行后续触发动作
     protected static $directAfter = true;
+    // 20240504:给AuthSetTrait用
+    protected static $titleKey = 'name';
+    use \xjryanse\universal\traits\AuthSetTrait;
 
+    use \xjryanse\universal\service\itemBtn\TriggerTraits;
+    use \xjryanse\universal\service\itemBtn\FieldTraits;
+    use \xjryanse\universal\service\itemBtn\DimTraits;
+    // 20231008
+    protected static $itemKey = 'btn';
+    
     /**
      * 导出数据表时，获取字段列表
      * TODO更科学？？只提取第一个表格
@@ -60,7 +77,31 @@ class UniversalItemBtnService extends Base implements MainModelInterface {
         }
         return $optArr;
     }
-
+    /**
+     * 导出数据表时，获取字段列表
+     * TODO更科学？？只提取第一个表格
+     * 20240105:增加取表id
+     */
+    public function getExportTablePageItemId($subKey = '') {
+        $pageKey = $this->getPageKey() ?: $this->sysPageKey();
+        if ($pageKey && $subKey) {
+            $pageKey = $pageKey . '_' . $subKey;
+        }
+        $pageConf = $pageKey ? UniversalPageService::getPageWithSys($pageKey) : [];
+        Debug::debug('$pageConf', $pageConf);
+        if (!$pageConf) {
+            throw new Exception('页面:' . $pageKey . '配置异常，请联系您的软件服务商' . __METHOD__);
+        }
+        $optArr = [];
+        foreach ($pageConf['pageItems'] as $v) {
+            if ($v['item_key'] == 'table') {
+                return $v['id'];
+            }
+        }
+        return '';
+    }
+    
+    
     /**
      * 根据按钮id，获取所属页面id
      * 一般用于反取页面
@@ -151,7 +192,7 @@ class UniversalItemBtnService extends Base implements MainModelInterface {
         $con[] = ['status', '=', 1];
         // $info = UniversalPageItemService::mainModel()->where('id',$pageItemId)->find();
         $info = UniversalPageItemService::getInstance($pageItemId)->staticGet();
-        if ($info['auth_check']) {
+        if (Arrays::value($info,'auth_check')) {
             // 20220825:带权限数据校验
             $res = self::universalListWithAuth($con, false);
         } else {
@@ -211,6 +252,8 @@ class UniversalItemBtnService extends Base implements MainModelInterface {
             if($v['cate'] == 'wxOpenFile' && Strings::isSnowId($v['tpl_id'])){
                 $v = Arrays::picFieldCov($v, ['tpl_id']);
             }
+            // 20240715:解决时间范围筛选带入表单造成异常
+            $v['except_keys'] = Arrays::value($v, 'except_keys') ? explode(',', Arrays::value($v, 'except_keys')) : [];
         }
         return $res;
     }
@@ -282,16 +325,8 @@ class UniversalItemBtnService extends Base implements MainModelInterface {
      * @param type $newPageItemId
      * @return boolean
      */
-    public static function downLoadRemoteConf($options, $newPageItemId) {
-        self::checkTransaction();
-        foreach ($options as $item) {
-            $sData = $item;
-            $newItemId = self::mainModel()->newId();
-            $sData['id'] = $newItemId;
-            $sData['page_item_id'] = $newPageItemId;
-            self::save($sData);
-        }
-        return true;
+    public static function downLoadRemoteConf($pageItemId, $newPageItemId) {
+        return self::universalSysItemsDownload($pageItemId, $newPageItemId);
     }
 
     /**
@@ -411,6 +446,87 @@ class UniversalItemBtnService extends Base implements MainModelInterface {
      */
     public function fUpdateTime() {
         return $this->getFFieldValue(__FUNCTION__);
+    }
+
+    /**
+     * 20230914：按页面项，覆盖字段信息
+     * @param type $pageItemId
+     */
+    public static function delRecur($pageItemId){
+        // 提取页面项字段
+        $fieldArr = self::dimListByPageItemId($pageItemId);
+        // 循环，替换，更新
+        foreach($fieldArr as $v){
+            // 删除
+            self::getInstance($v['id'])->deleteRam();
+        }
+        return true;
+    }
+    
+    /**
+     * 远端提取项目列表
+     * @createTime 2023-10-08
+     * @return type
+     */
+    protected static function sysItems($pageItemId) {
+        $param['pageItemId'] = $pageItemId;
+        return BaseSystem::baseSysGet('/webapi/Universal/btnList', $param);
+    }
+    
+    
+    /**
+     * 导出数据和按钮配置进行组装
+     * 2024-01-23
+     * @param type $dataArr         二维数据列表
+     * @param type $dynDataList     动态列表 
+     * @param type $sumData         求和
+     * @param type $tableFilter     是否经过表格过滤？是；否
+     * @return string
+     */
+    public function exportPack($dataArr, $sumData=[], $tableFilter = true){
+        $btnInfo        = $this->get();
+        // Debug::dump('$btnInfo',$btnInfo);
+
+        $uniFieldArr    = $this->getExportFieldArr();
+
+        $pageItemId     = $this->getExportTablePageItemId();
+        $dynDataList    = UniversalItemTableService::getDynDataListByPageItemIdAndData($pageItemId, $dataArr);
+        //20220927
+        //导出数据转换：拼上动态枚举的值
+        if($tableFilter){
+            $exportData     = UniversalItemTableService::exportDataDeal($uniFieldArr, $dataArr, $dynDataList, $sumData);
+        } else {
+            $exportData = $dataArr;
+        }
+        // Debug::dump('$exportData',$dataArr);
+        // exit;
+        if($btnInfo['tpl_id']){
+            //有模板，使用模板导出
+            $replace                = [];
+            $resp                   = GenerateTemplateLogService::export($btnInfo['tpl_id'], $exportData,$replace);
+            $res                    = $resp['file_path'];
+        } else {
+            $dataTitle  = array_column($uniFieldArr,'label','name');
+            // dump($dataTitle);exit;
+            // dump($exportData);exit;
+            if(count($exportData) <1000){
+                Debug::dump($exportData);
+                // 导出excel
+                $exportPathRaw = ExportLogic::dataExportExcel($exportData,$dataTitle);
+                $exportPath = str_replace('./', '/', $exportPathRaw);
+                $res['url']         = Request::domain() . $exportPath;
+                $res['fileName']    = date('YmdHis') . '.xlsx';
+            } else {
+                // 导出csv
+                // $keys       = array_column($v['optionArr'],'name');
+                $dataTitle          = array_column($uniFieldArr,'label');
+                //没有模板，使用简单的导出
+                $fileName           = ExportLogic::getInstance()->putIntoCsv($exportData,$dataTitle);
+                $res['url']         = Request::domain().'/Uploads/Download/CanDelete/'.$fileName;
+                $res['fileName']    = date('YmdHis') . '.csv';
+            }
+        }
+        return $res;
     }
 
 }

@@ -95,6 +95,10 @@ trait DefaultPageTraits{
      * 20220427保存列表页面
      */
     public static function saveListPage ($tableName) {
+        // 20240320
+        $controller = DbOperate::getController($tableName);
+        $tableKey   = DbOperate::getTableKey($tableName);
+        
         $baseName   = self::tableNameGetBaseName($tableName);
         $fieldsArr  = DbOperate::columns($tableName);
         $expFields  = self::getExpFields();
@@ -114,10 +118,24 @@ trait DefaultPageTraits{
                 $btnArr = [];
                 $btnArr[] = ['name'=>'查询','cate'=>'paginate'      ,'size'=>'mini','icon'=>'el-icon-search','type'=>'success','data_url'=>'','trigger'=>''];
                 $btnArr[] = ['name'=>'添加','cate'=>'layerUniversal','size'=>'mini','icon'=>'','type'=>'','data_url'=>$baseName.'Add','trigger'=>'list'];
+                $btnArr[] = ['name'=>'批量删除','cate'=>'listOperate','size'=>'mini','icon'=>'','type'=>'danger'
+                    ,'data_url' =>'/admin/'.$controller.'/delRam?admKey='.$tableKey
+                    ,'show_condition' =>'{"status":0}'
+                    ,'confirm' =>'确认删除这些数据？'
+                    ,'trigger'  =>'list'];
                 UniversalItemBtnService::saveBtn($pageItem['id'],$btnArr);
             }
             if($pageItem['item_key'] == 'table'){
-                UniversalItemTableService::saveField($pageItem['id'],$fields);
+                UniversalItemTableService::saveField($pageItem['id'],$fields, $tableName);
+                // 20240320
+                $btnArrT = [];
+                $btnArrT[] = ['name'=>'编辑','cate'=>'layerUniversal'      ,'size'=>'mini','icon'=>'','type'=>'','data_url'=>$baseName.'Add','param'=>'{"id":"id"}','trigger'=>'list'];
+                $btnArrT[] = ['name'=>'删除','cate'=>'listOperate','size'=>'mini','icon'=>'','type'=>'danger'
+                    ,'data_url' =>'/admin/'.$controller.'/delRam?admKey='.$tableKey
+                    ,'show_condition' =>'{"status":0}'
+                    ,'confirm' =>'确认删除这条数据？'
+                    ,'trigger'  =>'list'];
+                UniversalItemBtnService::saveBtn($pageItem['id'],$btnArrT);
             }
         }
         return $pageName;
@@ -135,7 +153,11 @@ trait DefaultPageTraits{
         $pageName   = $baseName."Add";
         $items      = ['form','btn'];
         //带项目保存，获取页面id
-        $pageId     = self::saveWithItemGetPageId($pageName, $items, $tableName);
+        $controller = DbOperate::getController($tableName);
+        $tableKey   = DbOperate::getTableKey($tableName);
+        $sData['api_url'] = '/admin/'.$controller.'/get?admKey='.$tableKey;
+
+        $pageId     = self::saveWithItemGetPageId($pageName, $items, $tableName, $sData);
         //【三】保存子项目
         $con[]      = ['page_id','=',$pageId];
         $pageItems  = UniversalPageItemService::lists($con);
@@ -148,7 +170,7 @@ trait DefaultPageTraits{
                 $tableArr   = explode('_',$tableName);
                 $urlKey     = count($tableArr) > 2 ? Strings::camelize(implode('_',array_splice($tableArr,2))) : 'index'; 
                 $btnArr     = [];
-                $btnArr[]   = ['name'=>'保存','cate'=>'listOperate'      ,'size'=>'mini','data_url'=>'/admin/'.$tableArr[1].'/saveGetInfo?admKey='.$urlKey ,'trigger'=>'close'];
+                $btnArr[]   = ['name'=>'保存','cate'=>'listOperate'      ,'size'=>'mini','data_url'=>'/admin/'.$tableArr[1].'/saveGetInfoRam?admKey='.$urlKey ,'trigger'=>'close'];
                 UniversalItemBtnService::saveBtn($pageItem['id'],$btnArr);
             }
         }

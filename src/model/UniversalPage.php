@@ -15,6 +15,12 @@ class UniversalPage extends Base
             'uni_field' =>'id',
             'del_check' => true
         ],
+        [
+            'field'     =>'instruction_id',
+            'uni_name'  =>'system_instructions',
+            'uni_field' =>'id',
+            'del_check' => true
+        ],
     ];
     
     /**

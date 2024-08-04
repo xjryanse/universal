@@ -19,4 +19,24 @@ class UniversalItemCell extends Base
             'del_check' => true
         ],
     ];
+    
+    public static $picFields = ['icon_img'];
+    
+    /**
+     * 用户头像图标
+     * @param type $value
+     * @return type
+     */
+    public function getIconImgAttr($value) {
+        return self::getImgVal($value);
+    }
+
+    /**
+     * 图片修改器，图片带id只取id
+     * @param type $value
+     * @throws \Exception
+     */
+    public function setIconImgAttr($value) {
+        return self::setImgVal($value);
+    }
 }

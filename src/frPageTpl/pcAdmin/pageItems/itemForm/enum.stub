@@ -1,0 +1,20 @@
+<el-col :span="{$span}" style="min-height:45px">
+  <el-form-item label="{$label}" :prop="{$field}">
+{if $multi}
+    <!--多选-->
+    <el-select clearable filterable multiple v-model="mDataData.{$field}" placeholder="请选择{$label}" title="{$label}">
+        {foreach $option as $_k=>$_item}
+            <el-option key="{$_k}" label="{$_item.cate_name}" value="{$_k}"></el-option>
+        {/foreach}
+      <el-option v-for="(key,value) in options" :key="key" :label="key" :value="value"></el-option>
+    </el-select>
+{else}
+    <!--单选-->
+    <el-select clearable filterable v-model="mDataData.{$field}" placeholder="请选择{$label}" title="{$label}">
+        {foreach $option as $_k=>$_item}
+            <el-option key="{$_k}" label="{$_item.cate_name}" value="{$_k}"></el-option>
+        {/foreach}
+    </el-select>
+{/if}
+  </el-form-item>
+</el-col>

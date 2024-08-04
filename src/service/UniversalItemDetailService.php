@@ -7,7 +7,8 @@ use xjryanse\system\service\SystemColumnListService;
 use xjryanse\uniform\service\UniformTableService;
 use xjryanse\uniform\service\UniformUniversalItemDetailService;
 use xjryanse\logic\Strings;
-use xjryanse\logic\Arrays;
+use xjryanse\logic\Arrays2d;
+use xjryanse\system\service\columnlist\Dynenum;
 use think\facade\Request;
 
 /**
@@ -17,14 +18,31 @@ class UniversalItemDetailService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelRamTrait;
+    use \xjryanse\traits\MainModelCacheTrait;
+    use \xjryanse\traits\MainModelCheckTrait;
+    use \xjryanse\traits\MainModelGroupTrait;
     use \xjryanse\traits\MainModelQueryTrait;
 
-// 静态模型：配置式数据表
+
+    // 静态模型：配置式数据表
+    use \xjryanse\traits\ObjectAttrTrait;
     use \xjryanse\traits\StaticModelTrait;
+    use \xjryanse\universal\traits\UniversalTrait;
 
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemDetail';
-
+    
+    use \xjryanse\universal\service\itemDetail\DimTraits;
+    use \xjryanse\universal\service\itemDetail\FieldTraits;
+    
+    protected static $itemKey = 'detail';    
+    
+    public static function extraDetails($ids) {
+        return self::commExtraDetails($ids, function($lists) use ($ids) {
+                    return $lists;
+                },true);
+    }
     /**
      * 必有方法
      * @param type $pageItemId
@@ -39,8 +57,12 @@ class UniversalItemDetailService extends Base implements MainModelInterface {
         // 处理MONTH_DAY等特殊字串
         $res = self::listDeal($resRaw, $subKey);
 
+        $btns = UniversalItemBtnService::optionArr($pageItemId);
+        
         foreach ($res as &$v) {
             $v = self::addOpt($v);
+            // 20231015表单后向按钮
+            $v['afterBtns'] = $btns ? Arrays2d::listFilter($btns, [['subitem_id','=',$v['id']]]) : [];
         }
         return $res;
     }
@@ -68,8 +90,12 @@ class UniversalItemDetailService extends Base implements MainModelInterface {
         $con[] = ['status', '=', 1];
 
         $res = self::lists($con, 'sort', 'id,label,show_label,field,type,option,show_condition,class,span,layer_url');
+        // 20231224？？？合理吗？
+        $btns = UniversalItemBtnService::optionArr($subItemId);
         foreach ($res as &$v) {
             $v = self::addOpt($v);
+            // 20231015表单后向按钮
+            $v['afterBtns'] = $btns ? Arrays2d::listFilter($btns, [['subitem_id','=',$v['id']]]) : [];
         }
         return $res;
     }
@@ -129,23 +155,14 @@ class UniversalItemDetailService extends Base implements MainModelInterface {
 
     /**
      * 20230331
-     * @param type $options
+     * @param type $pageItemId
      * @param type $newPageItemId
      * @return boolean
-     */
-    public static function downLoadRemoteConf($options, $newPageItemId) {
-        self::checkTransaction();
-        foreach ($options as $item) {
-            $sData = $item;
-            $newItemId = self::mainModel()->newId();
-            $sData['id'] = $newItemId;
-            $sData['page_item_id'] = $newPageItemId;
-            self::save($sData);
-        }
-        return true;
+     */    
+    public static function downLoadRemoteConf($pageItemId, $newPageItemId) {
+        return self::universalSysItemsDownload($pageItemId, $newPageItemId);
     }
 
-    
     /**
      * 20230717:提取上传图片字段
      * @param type $pageItemId      
@@ -223,125 +240,6 @@ class UniversalItemDetailService extends Base implements MainModelInterface {
         return $arr;
     }
 
-    /**
-     *
-     */
-    public function fId() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * [冗]页面id
-     */
-    public function fPageId() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * page_item表的id
-     */
-    public function fPageItemId() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * [顺1]图标
-     */
-    public function fIconPic() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * [顺2]宫格图标
-     */
-    public function fGridIcon() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * [顺2]图标颜色
-     */
-    public function fIconColor() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 宫格跳转地址
-     */
-    public function fUrl() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 排序
-     */
-    public function fSort() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 状态(0禁用,1启用)
-     */
-    public function fStatus() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 有使用(0否,1是)
-     */
-    public function fHasUsed() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 锁定（0：未锁，1：已锁）
-     */
-    public function fIsLock() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 锁定（0：未删，1：已删）
-     */
-    public function fIsDelete() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 备注
-     */
-    public function fRemark() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 创建者，user表
-     */
-    public function fCreater() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 更新者，user表
-     */
-    public function fUpdater() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 创建时间
-     */
-    public function fCreateTime() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
-    /**
-     * 更新时间
-     */
-    public function fUpdateTime() {
-        return $this->getFFieldValue(__FUNCTION__);
-    }
-
     
     /**
      * 20230906：转换成标准化字段，用于后台展示对比
@@ -376,4 +274,37 @@ class UniversalItemDetailService extends Base implements MainModelInterface {
         return $arr;
     }
     
+        /**
+     * 20230413：获取动态枚举配置
+     * @param type $pageItemId
+     * 'user_id'    =>'table_name=w_user&key=id&value=username'
+     * 'goods_id'   =>'table_name=w_goods&key=id&value=goods_name'
+     */
+    public static function dynArrs($pageItemId) {
+        $con[] = ['page_item_id', '=', $pageItemId];
+        $lists = self::staticConList($con);
+        if (!$lists) {
+            // 系统远端提取
+            // $lists = self::sysItems($pageItemId);
+            $lists = self::universalSysItems($pageItemId);
+        }
+        $cone[] = ['status', '=', 1];
+        $cone[] = ['type', '=', 'dynenum'];
+        $listEE = Arrays2d::listFilter($lists, $cone);
+
+        return array_column($listEE, 'option', 'field');
+    }
+    
+    
+    /**
+     * 20230607
+     * @param type $pageItemId
+     * @param type $dataArr     二维数组
+     * @return type
+     */
+    public static function getDynDataListByPageItemIdAndData($pageItemId, $dataArr) {
+        $dynArrs = self::dynArrs($pageItemId);
+        $res = Dynenum::dynDataList($dataArr, $dynArrs);
+        return $res;
+    }
 }

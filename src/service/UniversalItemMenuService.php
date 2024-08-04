@@ -12,11 +12,19 @@ class UniversalItemMenuService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelRamTrait;
+    use \xjryanse\traits\MainModelCacheTrait;
+    use \xjryanse\traits\MainModelCheckTrait;
+    use \xjryanse\traits\MainModelGroupTrait;
     use \xjryanse\traits\MainModelQueryTrait;
+
 
 // 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
     use \xjryanse\universal\traits\UniversalTrait;
+    // 20240508:给AuthSetTrait用
+    protected static $titleKey = 'title';
+    use \xjryanse\universal\traits\MenuAuthSetTrait;
 
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemMenu';
@@ -106,6 +114,16 @@ class UniversalItemMenuService extends Base implements MainModelInterface {
                     }
                     return $lists;
                 });
+    }
+    /**
+     * 20231009
+     * @param type $pageItemId
+     * @param type $newPageItemId
+     * @return bool
+     */
+    public static function downLoadRemoteConf($pageItemId, $newPageItemId) {
+        // 菜单各自设置，默认不同步
+        return true;
     }
 
     /**

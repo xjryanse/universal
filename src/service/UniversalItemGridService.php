@@ -12,20 +12,32 @@ class UniversalItemGridService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelRamTrait;
+    use \xjryanse\traits\MainModelCacheTrait;
+    use \xjryanse\traits\MainModelCheckTrait;
+    use \xjryanse\traits\MainModelGroupTrait;
     use \xjryanse\traits\MainModelQueryTrait;
+
 
 // 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
 
 // 带权限查询
     use \xjryanse\universal\traits\UniversalTrait;
+    // 20240508:给AuthSetTrait用
+    protected static $titleKey = 'title';
+    use \xjryanse\universal\traits\AuthSetTrait;
+
     use \xjryanse\traits\TreeTrait;
 
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemGrid';
     //直接执行后续触发动作
     protected static $directAfter = true;
-
+    protected static $itemKey = 'grid';
+    
+    use \xjryanse\universal\service\itemGrid\DimTraits;
+    
     public static function extraDetails($ids) {
         return self::commExtraDetails($ids, function($lists) use ($ids) {
                     $universalTable = self::getTable();
@@ -101,6 +113,11 @@ class UniversalItemGridService extends Base implements MainModelInterface {
         $this->universalRoleClear();
     }
 
+    public static function downLoadRemoteConf($pageItemId, $newPageItemId) {
+        return self::universalSysItemsDownload($pageItemId, $newPageItemId);
+    }
+
+    
     /**
      *
      */

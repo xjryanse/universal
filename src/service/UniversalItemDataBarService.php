@@ -12,14 +12,23 @@ class UniversalItemDataBarService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelRamTrait;
+    use \xjryanse\traits\MainModelCacheTrait;
+    use \xjryanse\traits\MainModelCheckTrait;
+    use \xjryanse\traits\MainModelGroupTrait;
     use \xjryanse\traits\MainModelQueryTrait;
+
 
 // 静态模型：配置式数据表
     use \xjryanse\traits\StaticModelTrait;
-
+    use \xjryanse\universal\traits\UniversalTrait;
+    
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\universal\\model\\UniversalItemDataBar';
+    // 20231008
+    protected static $itemKey = 'data_bar';
 
+    use \xjryanse\universal\service\itemDataBar\DimTraits;    
     /**
      * 必有方法
      */
@@ -31,16 +40,8 @@ class UniversalItemDataBarService extends Base implements MainModelInterface {
         return self::jsonCov($res);
     }
 
-    public static function downLoadRemoteConf($options, $newPageItemId) {
-        self::checkTransaction();
-        foreach ($options as $item) {
-            $sData = $item;
-            $newItemId = self::mainModel()->newId();
-            $sData['id'] = $newItemId;
-            $sData['page_item_id'] = $newPageItemId;
-            self::save($sData);
-        }
-        return true;
+    public static function downLoadRemoteConf($pageItemId, $newPageItemId) {
+        return self::universalSysItemsDownload($pageItemId, $newPageItemId);
     }
 
     /**

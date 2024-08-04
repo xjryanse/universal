@@ -6,7 +6,14 @@ namespace xjryanse\universal\service\page;
  * 字段复用列表
  */
 trait FieldTraits{
-
+    /**
+     * 用
+     * @return type
+     */
+    public function fBaseTable() {
+        return $this->getFFieldValue(__FUNCTION__);
+    }
+    
     /**
      *
      */

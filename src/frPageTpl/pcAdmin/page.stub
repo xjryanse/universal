@@ -1,0 +1,32 @@
+<template>
+  <el-row style="height: 100%;">
+{{JSON.stringify(mDataData)}}
+{$pageItemsContent}
+  </el-row>
+</template>
+
+<script>
+  import ACommPost from '../../assets/js/xjryanse.js'
+  export default {
+    name: '{$page_key}',
+    props: {
+      // 表单数据
+      dataData: Object,
+    },
+    data() {
+      return {
+        // props 转为内部属性
+        mDataData: {},
+      }
+    },
+    methods: {
+        // 系统方法
+{$jsMethods}
+    }
+  }
+</script>
+
+
+<style scoped>
+
+</style>

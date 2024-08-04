@@ -12,7 +12,12 @@ class UniversalPageLogService extends Base implements MainModelInterface {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelRamTrait;
+    use \xjryanse\traits\MainModelCacheTrait;
+    use \xjryanse\traits\MainModelCheckTrait;
+    use \xjryanse\traits\MainModelGroupTrait;
     use \xjryanse\traits\MainModelQueryTrait;
+
     use \xjryanse\traits\RedisModelTrait;
 
     protected static $mainModel;
@@ -26,8 +31,9 @@ class UniversalPageLogService extends Base implements MainModelInterface {
      * @return type
      */
     public static function log($pageId) {
-        $data['page_id'] = $pageId;
-        $data['ip'] = Request::ip();
+        $data['page_id']    = $pageId;
+        $data['ip']         = Request::ip();
+        $data['version']    = Request::header('version');
         return self::redisLog($data);
         // return self::save($data);
     }
